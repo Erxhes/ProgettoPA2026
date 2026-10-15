@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME mancante in .env}
+      POSTGRES_USER: ${DB_USER:?DB_USER mancante in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD mancante in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    env_file: .env
+    restart: on-failure
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      # Nel container l'app ascolta sempre sulla 3000; la porta esposta sull'host è ${PORT}
+      PORT: 3000
+    ports:
+      - "${PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
