@@ -6,6 +6,7 @@ import { validateBody, validateParams, validateQuery } from '../middleware/valid
 import { versionsQuerySchema } from '../validators/querySchemas';
 import { createModelSchema, executeModelSchema, idParamSchema } from '../validators/modelSchemas';
 import { createWeightRequestSchema } from '../validators/requestSchemas';
+import { simulationSchema } from '../validators/simulationSchemas';
 
 /** Rotte sui modelli (authenticate e checkTokens sono applicati a monte). */
 export const modelRoutes = Router();
@@ -15,6 +16,12 @@ modelRoutes.post(
   validateParams(idParamSchema),
   validateBody(executeModelSchema),
   asyncHandler(ModelController.execute),
+);
+modelRoutes.post(
+  '/:id/simulate',
+  validateParams(idParamSchema),
+  validateBody(simulationSchema),
+  asyncHandler(ModelController.simulate),
 );
 modelRoutes.get(
   '/:id/versions',

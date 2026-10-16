@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { ModelService } from '../services/ModelService';
+import { SimulationService } from '../services/SimulationService';
 import { VersionService } from '../services/VersionService';
+import { SimulationInput } from '../validators/simulationSchemas';
 import { VersionsQuery } from '../validators/querySchemas';
 import { GraphInput } from '../validators/modelSchemas';
 
@@ -18,6 +20,11 @@ export class ModelController {
     const { start, goal } = req.body as { start: string; goal: string };
     const result = await ModelService.execute(ModelController.userId(req), Number(req.params.id), start, goal);
     res.status(200).json(result);
+  }
+
+  /** POST /models/:id/simulate */
+  static async simulate(req: Request, res: Response): Promise<void> {
+    res.status(200).json(await SimulationService.simulate(Number(req.params.id), req.body as SimulationInput));
   }
 
   /** GET /models/:id/versions */
