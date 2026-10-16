@@ -7,10 +7,10 @@ COPY src ./src
 RUN npm run build
 
 # Immagine finale: mantiene anche le devDependencies e i test, così
-# `docker compose exec app npm test` e gli script (seed) funzionano nel container.
+# `docker compose exec app npm test` e gli script (keys, token, seed) funzionano nel container.
 FROM node:24-alpine
 WORKDIR /app
-# Il processo non gira come root.
+# Il processo non gira come root; /app è dell'utente node perché `npm run keys` scrive in keys/.
 RUN chown node:node /app
 USER node
 COPY --chown=node:node package*.json ./

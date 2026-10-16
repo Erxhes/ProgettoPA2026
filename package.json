@@ -9,7 +9,10 @@
     "start": "node dist/server.js",
     "test": "jest --passWithNoTests",
     "seed": "node dist/seeders/seed.js",
-    "seed:dev": "tsx src/seeders/seed.ts"
+    "seed:dev": "tsx src/seeders/seed.ts",
+    "keys": "tsx src/scripts/generateKeys.ts",
+    "token": "node dist/scripts/generateToken.js",
+    "token:dev": "tsx src/scripts/generateToken.ts"
   },
   "license": "ISC",
   "engines": {
