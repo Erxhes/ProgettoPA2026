@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { ModelService } from '../services/ModelService';
+import { VersionService } from '../services/VersionService';
+import { VersionsQuery } from '../validators/querySchemas';
 import { GraphInput } from '../validators/modelSchemas';
 
 /** Controller delle rotte sui modelli: legge la richiesta e scrive la risposta HTTP. */
@@ -16,6 +18,13 @@ export class ModelController {
     const { start, goal } = req.body as { start: string; goal: string };
     const result = await ModelService.execute(ModelController.userId(req), Number(req.params.id), start, goal);
     res.status(200).json(result);
+  }
+
+  /** GET /models/:id/versions */
+  static async versions(req: Request, res: Response): Promise<void> {
+    const modelId = Number(req.params.id);
+    const versions = await VersionService.list(modelId, res.locals.query as VersionsQuery);
+    res.status(200).json({ modelId, count: versions.length, versions });
   }
 
   /** Id dell'utente autenticato (impostato da authenticate). */

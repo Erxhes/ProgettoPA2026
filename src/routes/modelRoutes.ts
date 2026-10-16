@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { ModelController } from '../controllers/ModelController';
 import { WeightRequestController } from '../controllers/WeightRequestController';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { validateBody, validateParams } from '../middleware/validate';
+import { validateBody, validateParams, validateQuery } from '../middleware/validate';
+import { versionsQuerySchema } from '../validators/querySchemas';
 import { createModelSchema, executeModelSchema, idParamSchema } from '../validators/modelSchemas';
 import { createWeightRequestSchema } from '../validators/requestSchemas';
 
@@ -14,6 +15,12 @@ modelRoutes.post(
   validateParams(idParamSchema),
   validateBody(executeModelSchema),
   asyncHandler(ModelController.execute),
+);
+modelRoutes.get(
+  '/:id/versions',
+  validateParams(idParamSchema),
+  validateQuery(versionsQuerySchema),
+  asyncHandler(ModelController.versions),
 );
 modelRoutes.post(
   '/:id/weight-requests',
