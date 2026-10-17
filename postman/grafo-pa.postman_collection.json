@@ -1,0 +1,2580 @@
+{
+  "info": {
+    "name": "Grafo PA - modelli di ottimizzazione su grafo",
+    "description": "Collection di test del backend. Prima di eseguirla: database appena seminato (`docker compose exec app npm run seed -- --force`) e variabili token dell'ambiente compilate con `docker compose exec app npm run token -- all`. Le richieste vanno eseguite in ordine (Collection Runner).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Data odierna (UTC) nel formato YYYY-MM-DD per il filtro per data",
+          "pm.collectionVariables.set('today', new Date().toISOString().slice(0, 10));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "newModelId",
+      "value": ""
+    },
+    {
+      "key": "requestId",
+      "value": ""
+    },
+    {
+      "key": "requestId2",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1 - Autenticazione, ruoli e token",
+      "item": [
+        {
+          "name": "Senza JWT -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () { pm.response.to.have.status(401); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore UNAUTHORIZED\", function () { pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JWT con firma errata -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}x"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () { pm.response.to.have.status(401); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore UNAUTHORIZED\", function () { pm.expect(body.error.code).to.eql(\"UNAUTHORIZED\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token terminati (Elena Greco, 0 token) -> 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noTokensToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            },
+            "description": "Richiede il database appena seminato: l'utente Elena Greco ha 0 token."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () { pm.response.to.have.status(401); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore INSUFFICIENT_TOKENS\", function () { pm.expect(body.error.code).to.eql(\"INSUFFICIENT_TOKENS\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Utente non admin sulla ricarica -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/recharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "recharge"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"elena.greco@example.com\",\n  \"credit\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore FORBIDDEN\", function () { pm.expect(body.error.code).to.eql(\"FORBIDDEN\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Health senza JWT -> 200 (unica rotta pubblica)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Stato ok\", function () { pm.expect(body.status).to.eql(\"ok\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 - Admin: ricarica",
+      "item": [
+        {
+          "name": "Ricarica non valida (credito negativo) -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/recharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "recharge"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"elena.greco@example.com\",\n  \"credit\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Email inesistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/recharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "recharge"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nessuno@example.com\",\n  \"credit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore NOT_FOUND\", function () { pm.expect(body.error.code).to.eql(\"NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ricarica con 3 decimali -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/recharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "recharge"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"elena.greco@example.com\",\n  \"credit\": 1.005\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ricarica Elena Greco di 50 token -> 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/recharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "recharge"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"elena.greco@example.com\",\n  \"credit\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Il credito si somma al saldo (0 + 50)\", function () { pm.expect(body.tokens).to.eql(50); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elena Greco ora può usare il sistema -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noTokensToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ricarica con email in maiuscolo e spazi -> 200 (email normalizzata)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/recharge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "recharge"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"  ELENA.Greco@Example.com \",\n  \"credit\": 0.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Email in minuscolo e credito sommato (50 + 0.5)\", function () { pm.expect(body.email).to.eql(\"elena.greco@example.com\"); pm.expect(body.tokens).to.eql(50.5); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 - Modelli: creazione ed esecuzione",
+      "item": [
+        {
+          "name": "Crea modello (4 nodi, 5 archi = 0.85 token) -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Casa - Università\",\n  \"graph\": {\n    \"Casa\": {\n      \"Fermata\": 1,\n      \"Piazza\": 4\n    },\n    \"Fermata\": {\n      \"Piazza\": 1,\n      \"Università\": 5\n    },\n    \"Piazza\": {\n      \"Università\": 1\n    },\n    \"Università\": {}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Costo 0.20 per nodo + 0.01 per arco\", function () { pm.expect(body.tokensCharged).to.eql(0.85); });",
+                  "pm.test(\"Versione 1, 4 nodi, 5 archi\", function () { pm.expect(body.versionNumber).to.eql(1); pm.expect(body.nodes).to.eql(4); pm.expect(body.edges).to.eql(5); });",
+                  "pm.collectionVariables.set(\"newModelId\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crea modello con grafo non valido -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rotto\",\n  \"graph\": {\n    \"A\": {\n      \"B\": -1\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crea modello senza credito sufficiente -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noTokensToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Troppo grande\",\n  \"graph\": {\n    \"N0\": {\n      \"N1\": 1\n    },\n    \"N1\": {\n      \"N2\": 1\n    },\n    \"N2\": {\n      \"N3\": 1\n    },\n    \"N3\": {\n      \"N4\": 1\n    },\n    \"N4\": {\n      \"N5\": 1\n    },\n    \"N5\": {\n      \"N6\": 1\n    },\n    \"N6\": {\n      \"N7\": 1\n    },\n    \"N7\": {\n      \"N8\": 1\n    },\n    \"N8\": {\n      \"N9\": 1\n    },\n    \"N9\": {\n      \"N10\": 1\n    },\n    \"N10\": {\n      \"N11\": 1\n    },\n    \"N11\": {\n      \"N12\": 1\n    },\n    \"N12\": {\n      \"N13\": 1\n    },\n    \"N13\": {\n      \"N14\": 1\n    },\n    \"N14\": {\n      \"N15\": 1\n    },\n    \"N15\": {\n      \"N16\": 1\n    },\n    \"N16\": {\n      \"N17\": 1\n    },\n    \"N17\": {\n      \"N18\": 1\n    },\n    \"N18\": {\n      \"N19\": 1\n    },\n    \"N19\": {\n      \"N20\": 1\n    },\n    \"N20\": {\n      \"N21\": 1\n    },\n    \"N21\": {\n      \"N22\": 1\n    },\n    \"N22\": {\n      \"N23\": 1\n    },\n    \"N23\": {\n      \"N24\": 1\n    },\n    \"N24\": {\n      \"N25\": 1\n    },\n    \"N25\": {\n      \"N26\": 1\n    },\n    \"N26\": {\n      \"N27\": 1\n    },\n    \"N27\": {\n      \"N28\": 1\n    },\n    \"N28\": {\n      \"N29\": 1\n    },\n    \"N29\": {\n      \"N30\": 1\n    },\n    \"N30\": {\n      \"N31\": 1\n    },\n    \"N31\": {\n      \"N32\": 1\n    },\n    \"N32\": {\n      \"N33\": 1\n    },\n    \"N33\": {\n      \"N34\": 1\n    },\n    \"N34\": {\n      \"N35\": 1\n    },\n    \"N35\": {\n      \"N36\": 1\n    },\n    \"N36\": {\n      \"N37\": 1\n    },\n    \"N37\": {\n      \"N38\": 1\n    },\n    \"N38\": {\n      \"N39\": 1\n    },\n    \"N39\": {\n      \"N40\": 1\n    },\n    \"N40\": {\n      \"N41\": 1\n    },\n    \"N41\": {\n      \"N42\": 1\n    },\n    \"N42\": {\n      \"N43\": 1\n    },\n    \"N43\": {\n      \"N44\": 1\n    },\n    \"N44\": {\n      \"N45\": 1\n    },\n    \"N45\": {\n      \"N46\": 1\n    },\n    \"N46\": {\n      \"N47\": 1\n    },\n    \"N47\": {\n      \"N48\": 1\n    },\n    \"N48\": {\n      \"N49\": 1\n    },\n    \"N49\": {\n      \"N50\": 1\n    },\n    \"N50\": {\n      \"N51\": 1\n    },\n    \"N51\": {\n      \"N52\": 1\n    },\n    \"N52\": {\n      \"N53\": 1\n    },\n    \"N53\": {\n      \"N54\": 1\n    },\n    \"N54\": {\n      \"N55\": 1\n    },\n    \"N55\": {\n      \"N56\": 1\n    },\n    \"N56\": {\n      \"N57\": 1\n    },\n    \"N57\": {\n      \"N58\": 1\n    },\n    \"N58\": {\n      \"N59\": 1\n    },\n    \"N59\": {\n      \"N60\": 1\n    },\n    \"N60\": {\n      \"N61\": 1\n    },\n    \"N61\": {\n      \"N62\": 1\n    },\n    \"N62\": {\n      \"N63\": 1\n    },\n    \"N63\": {\n      \"N64\": 1\n    },\n    \"N64\": {\n      \"N65\": 1\n    },\n    \"N65\": {\n      \"N66\": 1\n    },\n    \"N66\": {\n      \"N67\": 1\n    },\n    \"N67\": {\n      \"N68\": 1\n    },\n    \"N68\": {\n      \"N69\": 1\n    },\n    \"N69\": {\n      \"N70\": 1\n    },\n    \"N70\": {\n      \"N71\": 1\n    },\n    \"N71\": {\n      \"N72\": 1\n    },\n    \"N72\": {\n      \"N73\": 1\n    },\n    \"N73\": {\n      \"N74\": 1\n    },\n    \"N74\": {\n      \"N75\": 1\n    },\n    \"N75\": {\n      \"N76\": 1\n    },\n    \"N76\": {\n      \"N77\": 1\n    },\n    \"N77\": {\n      \"N78\": 1\n    },\n    \"N78\": {\n      \"N79\": 1\n    },\n    \"N79\": {\n      \"N80\": 1\n    },\n    \"N80\": {\n      \"N81\": 1\n    },\n    \"N81\": {\n      \"N82\": 1\n    },\n    \"N82\": {\n      \"N83\": 1\n    },\n    \"N83\": {\n      \"N84\": 1\n    },\n    \"N84\": {\n      \"N85\": 1\n    },\n    \"N85\": {\n      \"N86\": 1\n    },\n    \"N86\": {\n      \"N87\": 1\n    },\n    \"N87\": {\n      \"N88\": 1\n    },\n    \"N88\": {\n      \"N89\": 1\n    },\n    \"N89\": {\n      \"N90\": 1\n    },\n    \"N90\": {\n      \"N91\": 1\n    },\n    \"N91\": {\n      \"N92\": 1\n    },\n    \"N92\": {\n      \"N93\": 1\n    },\n    \"N93\": {\n      \"N94\": 1\n    },\n    \"N94\": {\n      \"N95\": 1\n    },\n    \"N95\": {\n      \"N96\": 1\n    },\n    \"N96\": {\n      \"N97\": 1\n    },\n    \"N97\": {\n      \"N98\": 1\n    },\n    \"N98\": {\n      \"N99\": 1\n    },\n    \"N99\": {\n      \"N100\": 1\n    },\n    \"N100\": {\n      \"N101\": 1\n    },\n    \"N101\": {\n      \"N102\": 1\n    },\n    \"N102\": {\n      \"N103\": 1\n    },\n    \"N103\": {\n      \"N104\": 1\n    },\n    \"N104\": {\n      \"N105\": 1\n    },\n    \"N105\": {\n      \"N106\": 1\n    },\n    \"N106\": {\n      \"N107\": 1\n    },\n    \"N107\": {\n      \"N108\": 1\n    },\n    \"N108\": {\n      \"N109\": 1\n    },\n    \"N109\": {\n      \"N110\": 1\n    },\n    \"N110\": {\n      \"N111\": 1\n    },\n    \"N111\": {\n      \"N112\": 1\n    },\n    \"N112\": {\n      \"N113\": 1\n    },\n    \"N113\": {\n      \"N114\": 1\n    },\n    \"N114\": {\n      \"N115\": 1\n    },\n    \"N115\": {\n      \"N116\": 1\n    },\n    \"N116\": {\n      \"N117\": 1\n    },\n    \"N117\": {\n      \"N118\": 1\n    },\n    \"N118\": {\n      \"N119\": 1\n    },\n    \"N119\": {\n      \"N120\": 1\n    },\n    \"N120\": {\n      \"N121\": 1\n    },\n    \"N121\": {\n      \"N122\": 1\n    },\n    \"N122\": {\n      \"N123\": 1\n    },\n    \"N123\": {\n      \"N124\": 1\n    },\n    \"N124\": {\n      \"N125\": 1\n    },\n    \"N125\": {\n      \"N126\": 1\n    },\n    \"N126\": {\n      \"N127\": 1\n    },\n    \"N127\": {\n      \"N128\": 1\n    },\n    \"N128\": {\n      \"N129\": 1\n    },\n    \"N129\": {\n      \"N130\": 1\n    },\n    \"N130\": {\n      \"N131\": 1\n    },\n    \"N131\": {\n      \"N132\": 1\n    },\n    \"N132\": {\n      \"N133\": 1\n    },\n    \"N133\": {\n      \"N134\": 1\n    },\n    \"N134\": {\n      \"N135\": 1\n    },\n    \"N135\": {\n      \"N136\": 1\n    },\n    \"N136\": {\n      \"N137\": 1\n    },\n    \"N137\": {\n      \"N138\": 1\n    },\n    \"N138\": {\n      \"N139\": 1\n    },\n    \"N139\": {\n      \"N140\": 1\n    },\n    \"N140\": {\n      \"N141\": 1\n    },\n    \"N141\": {\n      \"N142\": 1\n    },\n    \"N142\": {\n      \"N143\": 1\n    },\n    \"N143\": {\n      \"N144\": 1\n    },\n    \"N144\": {\n      \"N145\": 1\n    },\n    \"N145\": {\n      \"N146\": 1\n    },\n    \"N146\": {\n      \"N147\": 1\n    },\n    \"N147\": {\n      \"N148\": 1\n    },\n    \"N148\": {\n      \"N149\": 1\n    },\n    \"N149\": {\n      \"N150\": 1\n    },\n    \"N150\": {\n      \"N151\": 1\n    },\n    \"N151\": {\n      \"N152\": 1\n    },\n    \"N152\": {\n      \"N153\": 1\n    },\n    \"N153\": {\n      \"N154\": 1\n    },\n    \"N154\": {\n      \"N155\": 1\n    },\n    \"N155\": {\n      \"N156\": 1\n    },\n    \"N156\": {\n      \"N157\": 1\n    },\n    \"N157\": {\n      \"N158\": 1\n    },\n    \"N158\": {\n      \"N159\": 1\n    },\n    \"N159\": {\n      \"N160\": 1\n    },\n    \"N160\": {\n      \"N161\": 1\n    },\n    \"N161\": {\n      \"N162\": 1\n    },\n    \"N162\": {\n      \"N163\": 1\n    },\n    \"N163\": {\n      \"N164\": 1\n    },\n    \"N164\": {\n      \"N165\": 1\n    },\n    \"N165\": {\n      \"N166\": 1\n    },\n    \"N166\": {\n      \"N167\": 1\n    },\n    \"N167\": {\n      \"N168\": 1\n    },\n    \"N168\": {\n      \"N169\": 1\n    },\n    \"N169\": {\n      \"N170\": 1\n    },\n    \"N170\": {\n      \"N171\": 1\n    },\n    \"N171\": {\n      \"N172\": 1\n    },\n    \"N172\": {\n      \"N173\": 1\n    },\n    \"N173\": {\n      \"N174\": 1\n    },\n    \"N174\": {\n      \"N175\": 1\n    },\n    \"N175\": {\n      \"N176\": 1\n    },\n    \"N176\": {\n      \"N177\": 1\n    },\n    \"N177\": {\n      \"N178\": 1\n    },\n    \"N178\": {\n      \"N179\": 1\n    },\n    \"N179\": {\n      \"N180\": 1\n    },\n    \"N180\": {\n      \"N181\": 1\n    },\n    \"N181\": {\n      \"N182\": 1\n    },\n    \"N182\": {\n      \"N183\": 1\n    },\n    \"N183\": {\n      \"N184\": 1\n    },\n    \"N184\": {\n      \"N185\": 1\n    },\n    \"N185\": {\n      \"N186\": 1\n    },\n    \"N186\": {\n      \"N187\": 1\n    },\n    \"N187\": {\n      \"N188\": 1\n    },\n    \"N188\": {\n      \"N189\": 1\n    },\n    \"N189\": {\n      \"N190\": 1\n    },\n    \"N190\": {\n      \"N191\": 1\n    },\n    \"N191\": {\n      \"N192\": 1\n    },\n    \"N192\": {\n      \"N193\": 1\n    },\n    \"N193\": {\n      \"N194\": 1\n    },\n    \"N194\": {\n      \"N195\": 1\n    },\n    \"N195\": {\n      \"N196\": 1\n    },\n    \"N196\": {\n      \"N197\": 1\n    },\n    \"N197\": {\n      \"N198\": 1\n    },\n    \"N198\": {\n      \"N199\": 1\n    },\n    \"N199\": {\n      \"N200\": 1\n    },\n    \"N200\": {\n      \"N201\": 1\n    },\n    \"N201\": {\n      \"N202\": 1\n    },\n    \"N202\": {\n      \"N203\": 1\n    },\n    \"N203\": {\n      \"N204\": 1\n    },\n    \"N204\": {\n      \"N205\": 1\n    },\n    \"N205\": {\n      \"N206\": 1\n    },\n    \"N206\": {\n      \"N207\": 1\n    },\n    \"N207\": {\n      \"N208\": 1\n    },\n    \"N208\": {\n      \"N209\": 1\n    },\n    \"N209\": {\n      \"N210\": 1\n    },\n    \"N210\": {\n      \"N211\": 1\n    },\n    \"N211\": {\n      \"N212\": 1\n    },\n    \"N212\": {\n      \"N213\": 1\n    },\n    \"N213\": {\n      \"N214\": 1\n    },\n    \"N214\": {\n      \"N215\": 1\n    },\n    \"N215\": {\n      \"N216\": 1\n    },\n    \"N216\": {\n      \"N217\": 1\n    },\n    \"N217\": {\n      \"N218\": 1\n    },\n    \"N218\": {\n      \"N219\": 1\n    },\n    \"N219\": {\n      \"N220\": 1\n    },\n    \"N220\": {\n      \"N221\": 1\n    },\n    \"N221\": {\n      \"N222\": 1\n    },\n    \"N222\": {\n      \"N223\": 1\n    },\n    \"N223\": {\n      \"N224\": 1\n    },\n    \"N224\": {\n      \"N225\": 1\n    },\n    \"N225\": {\n      \"N226\": 1\n    },\n    \"N226\": {\n      \"N227\": 1\n    },\n    \"N227\": {\n      \"N228\": 1\n    },\n    \"N228\": {\n      \"N229\": 1\n    },\n    \"N229\": {\n      \"N230\": 1\n    },\n    \"N230\": {\n      \"N231\": 1\n    },\n    \"N231\": {\n      \"N232\": 1\n    },\n    \"N232\": {\n      \"N233\": 1\n    },\n    \"N233\": {\n      \"N234\": 1\n    },\n    \"N234\": {\n      \"N235\": 1\n    },\n    \"N235\": {\n      \"N236\": 1\n    },\n    \"N236\": {\n      \"N237\": 1\n    },\n    \"N237\": {\n      \"N238\": 1\n    },\n    \"N238\": {\n      \"N239\": 1\n    },\n    \"N239\": {\n      \"N240\": 1\n    },\n    \"N240\": {\n      \"N241\": 1\n    },\n    \"N241\": {\n      \"N242\": 1\n    },\n    \"N242\": {\n      \"N243\": 1\n    },\n    \"N243\": {\n      \"N244\": 1\n    },\n    \"N244\": {\n      \"N245\": 1\n    },\n    \"N245\": {\n      \"N246\": 1\n    },\n    \"N246\": {\n      \"N247\": 1\n    },\n    \"N247\": {\n      \"N248\": 1\n    },\n    \"N248\": {\n      \"N249\": 1\n    },\n    \"N249\": {\n      \"N250\": 1\n    },\n    \"N250\": {\n      \"N251\": 1\n    },\n    \"N251\": {\n      \"N252\": 1\n    },\n    \"N252\": {\n      \"N253\": 1\n    },\n    \"N253\": {\n      \"N254\": 1\n    },\n    \"N254\": {\n      \"N255\": 1\n    },\n    \"N255\": {\n      \"N256\": 1\n    },\n    \"N256\": {\n      \"N257\": 1\n    },\n    \"N257\": {\n      \"N258\": 1\n    },\n    \"N258\": {\n      \"N259\": 1\n    },\n    \"N259\": {\n      \"N260\": 1\n    },\n    \"N260\": {\n      \"N261\": 1\n    },\n    \"N261\": {\n      \"N262\": 1\n    },\n    \"N262\": {\n      \"N263\": 1\n    },\n    \"N263\": {\n      \"N264\": 1\n    },\n    \"N264\": {\n      \"N265\": 1\n    },\n    \"N265\": {\n      \"N266\": 1\n    },\n    \"N266\": {\n      \"N267\": 1\n    },\n    \"N267\": {\n      \"N268\": 1\n    },\n    \"N268\": {\n      \"N269\": 1\n    },\n    \"N269\": {\n      \"N270\": 1\n    },\n    \"N270\": {\n      \"N271\": 1\n    },\n    \"N271\": {\n      \"N272\": 1\n    },\n    \"N272\": {\n      \"N273\": 1\n    },\n    \"N273\": {\n      \"N274\": 1\n    },\n    \"N274\": {\n      \"N275\": 1\n    },\n    \"N275\": {\n      \"N276\": 1\n    },\n    \"N276\": {\n      \"N277\": 1\n    },\n    \"N277\": {\n      \"N278\": 1\n    },\n    \"N278\": {\n      \"N279\": 1\n    },\n    \"N279\": {\n      \"N280\": 1\n    },\n    \"N280\": {\n      \"N281\": 1\n    },\n    \"N281\": {\n      \"N282\": 1\n    },\n    \"N282\": {\n      \"N283\": 1\n    },\n    \"N283\": {\n      \"N284\": 1\n    },\n    \"N284\": {\n      \"N285\": 1\n    },\n    \"N285\": {\n      \"N286\": 1\n    },\n    \"N286\": {\n      \"N287\": 1\n    },\n    \"N287\": {\n      \"N288\": 1\n    },\n    \"N288\": {\n      \"N289\": 1\n    },\n    \"N289\": {\n      \"N290\": 1\n    },\n    \"N290\": {\n      \"N291\": 1\n    },\n    \"N291\": {\n      \"N292\": 1\n    },\n    \"N292\": {\n      \"N293\": 1\n    },\n    \"N293\": {\n      \"N294\": 1\n    },\n    \"N294\": {\n      \"N295\": 1\n    },\n    \"N295\": {\n      \"N296\": 1\n    },\n    \"N296\": {\n      \"N297\": 1\n    },\n    \"N297\": {\n      \"N298\": 1\n    },\n    \"N298\": {\n      \"N299\": 1\n    },\n    \"N299\": {}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "300 nodi + 299 archi costano 62.99 token, più dei 50 di Elena Greco: nessun modello viene creato."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () { pm.response.to.have.status(401); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore INSUFFICIENT_TOKENS\", function () { pm.expect(body.error.code).to.eql(\"INSUFFICIENT_TOKENS\"); });",
+                  "pm.test(\"Il messaggio riporta costo e saldo\", function () { pm.expect(body.error.message).to.eql(\"Token insufficienti: costo richiesto 62.99, saldo 50.50\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Esegui il modello appena creato (Casa -> Università)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/{{newModelId}}/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "{{newModelId}}",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Casa\",\n  \"goal\": \"Università\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Percorso ottimo Casa-Fermata-Piazza-Università, costo 3\", function () { pm.expect(body.path).to.eql([\"Casa\",\"Fermata\",\"Piazza\",\"Università\"]); pm.expect(body.cost).to.eql(3); });",
+                  "pm.test(\"Stesso costo in token della creazione e tempo di esecuzione\", function () { pm.expect(body.tokensCharged).to.eql(0.85); pm.expect(body.executionTimeMs).to.be.a(\"number\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Esegui modello 1 del seed (Stazione -> Collemarino)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Percorso e costo del percorso (non token)\", function () { pm.expect(body.path[0]).to.eql(\"Stazione\"); pm.expect(body.path[body.path.length-1]).to.eql(\"Collemarino\"); pm.expect(body.cost).to.be.a(\"number\"); });",
+                  "pm.test(\"Costo in token 2.58 (12 nodi, 18 archi)\", function () { pm.expect(body.tokensCharged).to.eql(2.58); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Goal non raggiungibile (Collemarino -> Stazione) -> 200 con path null",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Collemarino\",\n  \"goal\": \"Stazione\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"path e cost null\", function () { pm.expect(body.path).to.eql(null); pm.expect(body.cost).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Nodo sconosciuto -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Atlantide\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Modello inesistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/9999/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "9999",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore NOT_FOUND\", function () { pm.expect(body.error.code).to.eql(\"NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Body JSON malformato -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Rotto\", \"graph\": ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Esecuzione con start uguale a goal -> percorso di un nodo, costo 0",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Stazione\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Percorso di un solo nodo e costo 0\", function () { pm.expect(body.path).to.eql([\"Stazione\"]); pm.expect(body.cost).to.eql(0); });",
+                  "pm.test(\"I token sono comunque addebitati (2.58)\", function () { pm.expect(body.tokensCharged).to.eql(2.58); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 - Versioni dei pesi e simulazione",
+      "item": [
+        {
+          "name": "Versioni del modello 1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/versions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "versions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Almeno 2 versioni con 12 nodi e 18 archi\", function () { pm.expect(body.count).to.be.at.least(2); pm.expect(body.versions[0].nodeCount).to.eql(12); pm.expect(body.versions[0].edgeCount).to.eql(18); pm.expect(body.versions[0].edges.length).to.eql(18); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Versioni filtrate (nodes=12, edges=18)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/versions?nodes=12&edges=18",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "versions"
+              ],
+              "query": [
+                {
+                  "key": "nodes",
+                  "value": "12"
+                },
+                {
+                  "key": "edges",
+                  "value": "18"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Tutte le versioni corrispondono\", function () { pm.expect(body.count).to.be.at.least(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Versioni filtrate senza risultati (nodes=99)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/versions?nodes=99",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "versions"
+              ],
+              "query": [
+                {
+                  "key": "nodes",
+                  "value": "99"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Lista vuota\", function () { pm.expect(body.count).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Versioni con filtro non valido -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/versions?nodes=-1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "versions"
+              ],
+              "query": [
+                {
+                  "key": "nodes",
+                  "value": "-1"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Versioni di un modello inesistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/9999/versions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "9999",
+                "versions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione: arco Piazza Roma->Duomo da 1 a 10 passo 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\",\n  \"edge\": {\n    \"from\": \"Piazza Roma\",\n    \"to\": \"Duomo\"\n  },\n  \"initialWeight\": 1,\n  \"finalWeight\": 10,\n  \"step\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"10 risultati\", function () { pm.expect(body.count).to.eql(10); pm.expect(body.results.length).to.eql(10); });",
+                  "pm.test(\"Best con configurazione completa dei pesi (18 archi)\", function () { pm.expect(body.best.weight).to.eql(1); pm.expect(body.best.weights.length).to.eql(18); });",
+                  "pm.test(\"Il percorso cambia al crescere del peso\", function () { pm.expect(body.results[0].path).to.not.eql(body.results[9].path); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione da 1 a 2 con passo 0.05",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\",\n  \"edge\": {\n    \"from\": \"Piazza Roma\",\n    \"to\": \"Duomo\"\n  },\n  \"initialWeight\": 1,\n  \"finalWeight\": 2,\n  \"step\": 0.05\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"21 risultati\", function () { pm.expect(body.count).to.eql(21); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione con range non ammissibile -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\",\n  \"edge\": {\n    \"from\": \"Piazza Roma\",\n    \"to\": \"Duomo\"\n  },\n  \"initialWeight\": 5,\n  \"finalWeight\": 2,\n  \"step\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione con passo zero -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\",\n  \"edge\": {\n    \"from\": \"Piazza Roma\",\n    \"to\": \"Duomo\"\n  },\n  \"initialWeight\": 1,\n  \"finalWeight\": 10,\n  \"step\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione su arco inesistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\",\n  \"edge\": {\n    \"from\": \"Stazione\",\n    \"to\": \"Collemarino\"\n  },\n  \"initialWeight\": 1,\n  \"finalWeight\": 10,\n  \"step\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore NOT_FOUND\", function () { pm.expect(body.error.code).to.eql(\"NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione su modello inesistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/9999/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "9999",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Collemarino\",\n  \"edge\": {\n    \"from\": \"Piazza Roma\",\n    \"to\": \"Duomo\"\n  },\n  \"initialWeight\": 1,\n  \"finalWeight\": 2,\n  \"step\": 0.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore NOT_FOUND\", function () { pm.expect(body.error.code).to.eql(\"NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulazione con start uguale a goal -> costo 0 a ogni passo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "simulate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Stazione\",\n  \"edge\": {\n    \"from\": \"Piazza Roma\",\n    \"to\": \"Duomo\"\n  },\n  \"initialWeight\": 1,\n  \"finalWeight\": 2,\n  \"step\": 0.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"3 passi, ognuno con percorso di un nodo e costo 0\", function () { pm.expect(body.results.length).to.eql(3); body.results.forEach(function (r) { pm.expect(r.path).to.eql([\"Stazione\"]); pm.expect(r.cost).to.eql(0); }); });",
+                  "pm.test(\"Il best result ha costo 0\", function () { pm.expect(body.best.cost).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 - Richieste di cambio peso",
+      "item": [
+        {
+          "name": "Crea richiesta sul modello 2 (Stazione->Porta Valle = 4) -> 201 pending",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/2/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "2",
+                "weight-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"Stazione\",\n  \"to\": \"Porta Valle\",\n  \"newWeight\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Stato pending\", function () { pm.expect(body.status).to.eql(\"pending\"); });",
+                  "pm.collectionVariables.set(\"requestId\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Richiesta su arco inesistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/2/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "2",
+                "weight-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"Stazione\",\n  \"to\": \"Cimitero\",\n  \"newWeight\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore NOT_FOUND\", function () { pm.expect(body.error.code).to.eql(\"NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Richiesta con peso negativo -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/2/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "2",
+                "weight-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"Stazione\",\n  \"to\": \"Porta Valle\",\n  \"newWeight\": -4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elenco richieste (utente): contiene la nuova",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Richiesta presente\", function () { pm.expect(body.requests.some(r => r.id == pm.collectionVariables.get(\"requestId\"))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro stato pending e modello 2 (AND)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests?status=pending&modelId=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                },
+                {
+                  "key": "modelId",
+                  "value": "2"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Solo pending del modello 2\", function () { pm.expect(body.requests.length).to.be.at.least(1); pm.expect(body.requests.every(r => r.status === \"pending\" && r.modelId === 2)).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro per data odierna",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests?date={{today}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{today}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Almeno la richiesta appena creata\", function () { pm.expect(body.count).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro non valido (status=boh) -> 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests?status=boh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "boh"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Il proprietario del modello 2 vede la richiesta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerJesiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests?status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Richiesta presente\", function () { pm.expect(body.requests.some(r => r.id == pm.collectionVariables.get(\"requestId\"))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L'admin non ha accesso speciale (non vede richieste altrui)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Nessuna richiesta visibile\", function () { pm.expect(body.count).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approvazione da un non proprietario (Luca Bianchi) -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAnconaToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore FORBIDDEN\", function () { pm.expect(body.error.code).to.eql(\"FORBIDDEN\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approvazione dell'admin (non proprietario) -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore FORBIDDEN\", function () { pm.expect(body.error.code).to.eql(\"FORBIDDEN\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approvazione del proprietario (Sofia Romano) -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerJesiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Media esponenziale 0.9*3 + 0.1*4 = 3.1\", function () { pm.expect(body.oldWeight).to.eql(3); pm.expect(body.updatedWeight).to.eql(3.1); });",
+                  "pm.test(\"Nuova versione 3 e stato approved\", function () { pm.expect(body.versionNumber).to.eql(3); pm.expect(body.request.status).to.eql(\"approved\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Seconda approvazione della stessa richiesta -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerJesiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore CONFLICT\", function () { pm.expect(body.error.code).to.eql(\"CONFLICT\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Versioni del modello 2 dopo l'approvazione",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/2/versions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "2",
+                "versions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"3 versioni, l'ultima con Stazione->Porta Valle = 3.1\", function () { pm.expect(body.count).to.eql(3); const e = body.versions[2].edges.find(x => x.from === \"Stazione\" && x.to === \"Porta Valle\"); pm.expect(e.weight).to.eql(3.1); const old = body.versions[1].edges.find(x => x.from === \"Stazione\" && x.to === \"Porta Valle\"); pm.expect(old.weight).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Esecuzione del modello 2 con i pesi aggiornati",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/2/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "2",
+                "execute"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Stazione\",\n  \"goal\": \"Zona Industriale\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Usa la versione 3\", function () { pm.expect(body.versionNumber).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crea una seconda richiesta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/1/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "1",
+                "weight-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"Stazione\",\n  \"to\": \"Porto\",\n  \"newWeight\": 9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"requestId2\", body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rifiuto da un non proprietario (Sofia Romano) -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerJesiToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId2}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId2}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Non spetta a me\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore FORBIDDEN\", function () { pm.expect(body.error.code).to.eql(\"FORBIDDEN\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rifiuto senza motivazione -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAnconaToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId2}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId2}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(body.error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rifiuto con motivazione (Luca Bianchi) -> 200",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAnconaToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId2}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId2}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Tratto in lavori, dato non affidabile\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Stato rejected con motivazione\", function () { pm.expect(body.status).to.eql(\"rejected\"); pm.expect(body.rejectionReason).to.contain(\"lavori\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rifiuto di una richiesta già decisa -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAnconaToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/{{requestId2}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "{{requestId2}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"di nuovo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore CONFLICT\", function () { pm.expect(body.error.code).to.eql(\"CONFLICT\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Richiesta inesistente -> 404",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerAnconaToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests/9999/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests",
+                "9999",
+                "approve"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elenco richieste rifiutate dell'utente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests?status=rejected",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "rejected"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Contiene la motivazione\", function () { pm.expect(body.requests.some(r => r.rejectionReason && r.rejectionReason.includes(\"lavori\"))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Richiesta su modello inesistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/models/9999/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "models",
+                "9999",
+                "weight-requests"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"Stazione\",\n  \"to\": \"Porto\",\n  \"newWeight\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", function () { pm.response.to.have.status(404); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Codice errore NOT_FOUND\", function () { pm.expect(body.error.code).to.eql(\"NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
