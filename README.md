@@ -2,64 +2,47 @@
 
 Progetto individuale per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNIVPM).
 
+## Indice
+
+1. [Obiettivo](#obiettivo)
+2. [Stack](#stack)
+3. [Rotte](#rotte)
+4. [Progettazione](#progettazione)
+5. [Decisioni di progetto](#decisioni-di-progetto)
+6. [Errori](#errori)
+7. [Dati di demo (seed)](#dati-di-demo-seed)
+8. [Avvio con docker-compose](#avvio-con-docker-compose)
+9. [Test](#test)
+10. [Test con Postman](#test-con-postman)
+11. [Struttura del repository](#struttura-del-repository)
+
 ## Obiettivo
 
-Back-end REST in TypeScript per creare, eseguire e valutare modelli di ottimizzazione su grafo.
-Gli utenti autenticati con JWT possono aggiornare i pesi degli archi (per esempio i minuti per percorrere un tratto di strada), simulando il crowd-sourcing.
+Il sistema è un back-end REST che permette di **creare, eseguire e valutare modelli di ottimizzazione su grafo**
+(percorso di costo minimo, calcolato con [`node-dijkstra`](https://www.npmjs.com/package/node-dijkstra)).
+Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo valore per il peso di un arco
+(ad esempio i minuti necessari a percorrere un tratto di strada); il proprietario del modello decide se accettarlo.
+Quando la proposta è approvata il peso viene aggiornato con una media esponenziale e nasce una nuova **versione dei pesi**.
 
-## Funzionalità
+Funzionalità:
 
-- Applicazione Express con la rotta `GET /health`
-- Connessione a Postgres con Sequelize (Singleton)
-- Configurazione da variabili d'ambiente, con controllo all'avvio di porte e chiave JWT RS256
-- Docker e docker-compose (app + Postgres)
-- Modelli Sequelize per utenti, modelli di grafo, versioni dei pesi, archi e richieste di cambio peso
-- Seed con utenti, token iniziali e modelli di esempio
-- Test con Jest
+- creazione di un modello da un grafo (nel formato di `node-dijkstra`) con validazione e addebito di token;
+- esecuzione di un modello (percorso, costo del percorso, tempo di esecuzione) con addebito di token;
+- richieste di cambio peso con stati *pending*, poi *approved* o *rejected* (con motivazione);
+- consultazione dello stato delle richieste e delle versioni dei pesi, con filtri;
+- simulazione della variazione del peso di un arco, con risultato migliore e relativa configurazione dei pesi;
+- gestione dei token per utente e rotta admin di ricarica; tutte le rotte sono protette da JWT RS256.
 
 ## Stack
 
-Node.js 24, TypeScript (strict), Express, Sequelize, Postgres, JWT RS256, Jest, Docker.
-
-## Come avviare il progetto
-
-1. Copia `.env.example` in `.env` e compila i valori (credenziali del database e chiave privata RS256).
-2. Avvia tutto con Docker:
-
-```bash
-docker compose up --build
-```
-
-3. Verifica che il servizio risponda:
-
-```bash
-curl http://localhost:3000/health
-```
-
-La risposta attesa è `{"status":"ok"}`.
-
-## Dati di demo
-
-All'avvio del container l'app esegue il seed, che crea le tabelle e poi inserisce i dati di esempio in un'unica transazione. Se il database contiene già degli utenti, il seed non fa nulla, quindi il riavvio non duplica i dati.
-
-- 5 utenti: un admin con 1000 token, due utenti con 100 token, uno con 50 e uno con 0
-- 2 modelli: la rete stradale di Ancona (12 nodi, 18 archi) e la rete ciclabile di Jesi (10 nodi, 16 archi), ciascuno con 2 versioni dei pesi
-- 4 richieste di cambio peso: 2 approvate, 1 in attesa e 1 rifiutata con motivazione
-
-Per azzerare il database e rifare il seed:
-
-```bash
-docker compose exec app npm run seed -- --force
-```
-
-## Test
-
-```bash
-npm test
-```
-
-oppure nel container:
-
-```bash
-docker compose exec app npm test
-```
+| Componente | Scelta |
+|---|---|
+| Runtime e linguaggio | Node.js 24, TypeScript in modalità `strict` (senza `any`) |
+| Web framework | Express 5 |
+| ORM e database | Sequelize 6, PostgreSQL 16 (processo separato, avviato da docker-compose) |
+| Grafo | `node-dijkstra` |
+| Autenticazione | JWT con algoritmo RS256 (`jsonwebtoken`); la chiave privata è in `.env` |
+| Validazione | `zod` |
+| Test | Jest, ts-jest, supertest |
+| Contenitori | Docker e docker-compose |
+| Collaudo manuale | Postman (collection e ambiente in `postman/`) |
