@@ -375,3 +375,126 @@ I nodi sono luoghi delle due città (per esempio *Stazione*, *Porto*, *Duomo*, *
 
 Richieste iniziali: 2 approvate (che hanno generato le versioni 2), 1 *pending* (modello 1, arco da Piazza Cavour a Piazza Roma) e 1 rifiutata con motivazione.
 
+## Avvio con docker-compose
+
+Prerequisiti: Docker con Compose v2.
+
+1. **Configurazione.** Copia il file di esempio e imposta almeno `DB_PASSWORD` (il file `.env` non è tracciato da git):
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   | Variabile | Significato |
+   |---|---|
+   | `PORT` | porta esposta dall'applicazione (default 3000) |
+   | `DB_NAME`, `DB_USER`, `DB_PASSWORD` | credenziali del database; usate sia da Postgres sia dall'app (`DB_HOST` e `DB_PORT` sono impostati da compose) |
+   | `JWT_PRIVATE_KEY` | chiave privata RS256 in formato PEM su una riga, con le newline scritte come `\n` |
+   | `ALPHA` | coefficiente della media esponenziale, tra 0 e 1 (esclusi); se errato si usa 0.9 |
+
+2. **Chiave RS256.** Genera una chiave privata e incolla in `.env` la riga `JWT_PRIVATE_KEY="..."` (su una sola riga, con le newline scritte come `\n`).
+   La chiave non va mai committata. Con `openssl`:
+
+   ```bash
+   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out private.pem
+   printf 'JWT_PRIVATE_KEY="%s"\n' "$(awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' private.pem)"
+   ```
+
+   Il secondo comando stampa la riga da incollare in `.env`; poi cancella `private.pem`. In alternativa, senza `openssl`, lo script del progetto stampa la stessa riga:
+
+   ```bash
+   docker compose run --rm --no-deps app npm run keys
+   ```
+
+   Nel container i file `keys/` spariscono insieme al container (`--rm`): conta solo la riga stampata. Con Node installato in locale: `npm install && npm run keys` (qui `keys/` è una cartella ignorata da git).
+
+3. **Avvio.** Costruisce le immagini, avvia Postgres e l'applicazione ed esegue il seed:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   L'API risponde su `http://localhost:3000` (`GET /health`). Il database non è esposto sull'host: resta nella rete interna di compose.
+
+4. **Token per provare le rotte.** I JWT generati con `npm run token` durano 1 giorno: vanno rigenerati prima di provare la collection Postman se sono scaduti. Per ottenere un token per ogni utente del seed:
+
+   ```bash
+   docker compose exec app npm run token -- all
+   ```
+
+   Per un solo utente: `docker compose exec app npm run token -- <userId> <user|admin>`.
+
+Esempio:
+
+```bash
+curl -s -X POST http://localhost:3000/models/1/execute \
+  -H "Authorization: Bearer <JWT>" -H "Content-Type: application/json" \
+  -d '{"start":"Stazione","goal":"Collemarino"}'
+```
+
+Per fermare tutto: `docker compose down` (aggiungi `-v` per cancellare anche i dati del database).
+
+## Test
+
+![Risultati test](docs/test_suites.png)
+
+Sono presenti **231 test Jest** in 24 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
+
+| Suite | Cosa verifica |
+|---|---|
+| `setup`, `validateConfig` | `GET /health`, Singleton del database, controllo di porte e chiave JWT all'avvio |
+| `authenticate`, `roleAndTokens` | JWT valido, mancante, malformato, firmato con un'altra chiave, scaduto, HS256, `alg: none`; ruoli; token finiti: 401 |
+| `adminRoutes`, `rechargeDecimals`, `rechargeEmail` | ricarica: 401, 403, 400, 404, 200; al massimo 2 decimali; email in minuscolo |
+| `modelValidation`, `isolatedNodes`, `weightLimit` | calcolo del costo, validazione del grafo, nodi isolati e `__proto__`, limite sul peso |
+| `modelRoutes`, `executeRollback`, `executionTime` | creazione con e senza credito, esecuzione, start uguale a goal, logica del rollback dell'addebito, tempo di esecuzione |
+| `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, alpha letto dall'ambiente all'avvio |
+| `weightRequestRoutes`, `weightRequestRules`, `weightRequestAtomicity` | creazione, approvazione, rifiuto, 403 e 409, validazione del peso, approvazione doppia, logica del rollback |
+| `queryRoutes`, `queryFilters` | filtri di richieste e versioni, date non valide o di bordo, visibilità, `where` del DAO |
+| `simulation` | passi senza errori di arrotondamento, validazione dei range, best result, nessuna scrittura |
+| `errorHandler`, `bodyParserErrors` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli, JSON malformato (400) e body troppo grande (413) |
+| `seed` | il seed gira in un'unica transazione e, con la transazione simulata, annulla tutto se un inserimento fallisce |
+
+```bash
+docker compose exec app npm test     # nel container
+npm test                             # in locale (dopo npm install)
+npx tsc --noEmit                     # controllo dei tipi
+```
+
+## Test con Postman
+
+![Test Postman](docs/Postman_test.png)
+
+Nella cartella `postman/` ci sono:
+
+- `grafo-pa.postman_collection.json`: 56 richieste in 5 cartelle (autenticazione e ruoli, admin, modelli, versioni e simulazione, richieste di cambio peso), con script di test (117 asserzioni) che verificano status e contenuto delle risposte, compresi i casi di errore;
+- `grafo-pa.postman_environment.json`: variabile `baseUrl` e i token `adminToken`, `ownerAnconaToken`, `ownerJesiToken`, `userToken`, `noTokensToken`.
+
+Procedura:
+
+1. Importa in Postman la collection e il file di ambiente e seleziona l'ambiente.
+2. Parti da un database appena seminato: `docker compose exec app npm run seed -- --force`.
+3. Genera i token con `docker compose exec app npm run token -- all` (stampa righe `nome=token`) e incollali nelle variabili dell'ambiente. I token durano 1 giorno: rigenerali prima di ogni sessione di prova.
+4. Esegui la collection con il *Collection Runner*, **in ordine**: le richieste sono pensate per essere eseguite di seguito e si passano id creati a runtime (modello e richieste). Dopo una esecuzione ripeti il seed prima di rilanciarla.
+
+Da riga di comando è possibile eseguire la stessa collection con `newman` (non incluso nelle dipendenze).
+
+## Struttura del repository
+
+```
+src/
+  config/        variabili d'ambiente, controllo di alpha, connessione al database (Singleton)
+  models/        modelli Sequelize e relazioni
+  dao/           accesso ai dati
+  services/      logica di business (token, esecuzione, richieste, versioni, simulazione, JWT)
+  controllers/   lettura della richiesta e risposta HTTP
+  routes/        definizione degli endpoint
+  middleware/    JWT, token residui, ruoli, validazione, gestione errori
+  validators/    schemi zod
+  errors/        AppError e ErrorFactory
+  seeders/       script di seed
+  scripts/       generazione chiavi e token
+tests/           test Jest
+postman/         collection e ambiente
+docs/            specifica del progetto, diagrammi e immagini dei test
+Dockerfile, docker-compose.yml, jest.config.js, tsconfig.json
+```
