@@ -10,7 +10,7 @@ Progetto individuale per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNI
 4. [Progettazione](#progettazione)
 5. [Decisioni di progetto](#decisioni-di-progetto)
 6. [Errori](#errori)
-7. [Dati di demo (seed)](#dati-di-demo-seed)
+7. [Dati iniziali (seed)](#dati-iniziali-seed)
 8. [Avvio con docker-compose](#avvio-con-docker-compose)
 9. [Test](#test)
 10. [Test con Postman](#test-con-postman)
@@ -321,4 +321,57 @@ Solo `/admin/recharge` usa `requireRole`. Per approvare o rifiutare una richiest
 Due cose non sono pattern ma aiutano. `asyncHandler` (`src/middleware/asyncHandler.ts`) è una piccola funzione che passa a `next()` gli errori dei gestori asincroni, così arrivano all'`errorHandler`. Le transazioni le aprono i servizi con `Database.getInstance().transaction(...)`, così le scritture vanno a buon fine tutte insieme oppure nessuna.
 
 Gli errori si gestiscono solo nei middleware: controller e servizi non scrivono mai risposte di errore, lanciano un `AppError` e l'`errorHandler` lo trasforma in JSON `{ "error": { "code", "message" } }`. Gli errori imprevisti diventano un 500 generico.
+
+## Decisioni di progetto
+
+Dove la specifica lascia spazio ho deciso così:
+
+- Se i token non bastano, la risposta è 401 `INSUFFICIENT_TOKENS`, come quando i token sono finiti. Il saldo si scala con un'unica `UPDATE ... WHERE tokens >= costo`, nella stessa transazione che crea il modello: se il credito non basta, non viene creato niente.
+- Il costo (0.20 per nodo e 0.01 per arco) si calcola in centesimi, con numeri interi, per evitare gli errori dei numeri decimali.
+- Solo chi ha creato il modello può approvare o rifiutare le richieste di cambio peso. L'admin no: anche lui riceve 403. Se la richiesta è già stata decisa, la risposta è 409.
+- Il nuovo peso si calcola con `p = alpha * p_vecchio + (1 - alpha) * p_nuovo`, arrotondato a 4 decimali. `alpha` si legge dalla variabile `ALPHA` e deve essere maggiore di 0 e minore di 1; se non lo è, il sistema parte con 0.9.
+- Ogni approvazione crea una nuova versione dei pesi, e quando si esegue un modello si usa sempre l'ultima.
+- La simulazione non consuma token e non modifica il modello. Il risultato migliore è quello con il costo del percorso più basso; a parità vince il peso più piccolo.
+- Quando l'admin ricarica un utente, l'importo viene sommato al saldo e non lo sostituisce.
+
+## Errori
+
+Formato: `{ "error": { "code": "...", "message": "..." } }`.
+
+| Status | Codice | Quando |
+|---|---|---|
+| 400 | `BAD_REQUEST` | corpo, parametri o filtri non validi; JSON malformato; nodo sconosciuto; range di simulazione non ammissibile |
+| 401 | `UNAUTHORIZED` | JWT assente, malformato, scaduto o con firma errata; utente inesistente |
+| 401 | `INSUFFICIENT_TOKENS` | token terminati, o insufficienti a coprire il costo |
+| 403 | `FORBIDDEN` | ruolo non autorizzato (non admin) o non proprietario del modello |
+| 404 | `NOT_FOUND` | modello, arco, richiesta o utente inesistenti; rotta sconosciuta (con un JWT valido: senza JWT si ottiene 401) |
+| 409 | `CONFLICT` | richiesta di cambio peso già approvata o rifiutata |
+| 413 | `PAYLOAD_TOO_LARGE` | body della richiesta oltre il limite di 100 kb |
+| 500 | `INTERNAL_ERROR` | errore inatteso (messaggio generico) |
+
+## Dati iniziali (seed)
+
+Il seed gira automaticamente all'avvio del container `app` e solo se il database è vuoto, quindi è sicuro riavviare.
+Per azzerare e ripopolare:
+
+```bash
+docker compose exec app npm run seed -- --force
+```
+
+| Id | Email | Ruolo | Token iniziali | Note |
+|---|---|---|---|---|
+| 1 | `chiara.ferri@example.com` | admin | 1000 | amministratore; anche l'admin è soggetto al controllo dei token |
+| 2 | `luca.bianchi@example.com` | user | 100 | proprietario del modello 1 (Rete stradale Ancona) |
+| 3 | `sofia.romano@example.com` | user | 100 | proprietario del modello 2 (Rete ciclabile Jesi) |
+| 4 | `andrea.conti@example.com` | user | 50 | utente generico |
+| 5 | `elena.greco@example.com` | user | 0 | senza token: per provare il 401 a token finiti |
+
+| Modello | Proprietario | Nodi | Archi | Versioni |
+|---|---|---|---|---|
+| 1 - Rete stradale Ancona | Luca Bianchi | 12 | 18 | 2 |
+| 2 - Rete ciclabile Jesi | Sofia Romano | 10 | 16 | 2 |
+
+I nodi sono luoghi delle due città (per esempio *Stazione*, *Porto*, *Duomo*, *Passetto* ad Ancona; *Porta Valle*, *Teatro Pergolesi* a Jesi) e i pesi sono minuti di percorrenza di fantasia, scelti per avere percorsi alternativi da confrontare.
+
+Richieste iniziali: 2 approvate (che hanno generato le versioni 2), 1 *pending* (modello 1, arco da Piazza Cavour a Piazza Roma) e 1 rifiutata con motivazione.
 
