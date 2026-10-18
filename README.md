@@ -18,20 +18,20 @@ Progetto individuale per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNI
 
 ## Obiettivo
 
-Il sistema è un back-end REST che permette di **creare, eseguire e valutare modelli di ottimizzazione su grafo**
-(percorso di costo minimo, calcolato con [`node-dijkstra`](https://www.npmjs.com/package/node-dijkstra)).
-Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo valore per il peso di un arco
-(ad esempio i minuti necessari a percorrere un tratto di strada); il proprietario del modello decide se accettarlo.
-Quando la proposta è approvata il peso viene aggiornato con una media esponenziale e nasce una nuova **versione dei pesi**.
+Il progetto è un back-end REST per creare, eseguire e valutare modelli di ottimizzazione su grafo. Un modello è un grafo con dei pesi sugli archi, e il percorso di costo minimo si calcola con [`node-dijkstra`](https://www.npmjs.com/package/node-dijkstra).
 
-Funzionalità:
+Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo peso per un arco (per esempio i minuti per percorrere un tratto di strada) e il proprietario del modello decide se accettarlo. Se la proposta è approvata, il peso viene aggiornato con una media esponenziale e nasce una nuova **versione dei pesi**.
 
-- creazione di un modello da un grafo (nel formato di `node-dijkstra`) con validazione e addebito di token;
-- esecuzione di un modello (percorso, costo del percorso, tempo di esecuzione) con addebito di token;
-- richieste di cambio peso con stati *pending*, poi *approved* o *rejected* (con motivazione);
-- consultazione dello stato delle richieste e delle versioni dei pesi, con filtri;
-- simulazione della variazione del peso di un arco, con risultato migliore e relativa configurazione dei pesi;
-- gestione dei token per utente e rotta admin di ricarica; tutte le rotte sono protette da JWT RS256.
+Cosa si può fare:
+
+- creare un modello da un grafo nel formato di `node-dijkstra`, pagando dei token;
+- eseguire un modello e ottenere percorso, costo del percorso e tempo di esecuzione, pagando dei token;
+- chiedere il cambio di peso di un arco: la richiesta parte in stato *pending* e poi diventa *approved* o *rejected* (con motivazione);
+- consultare lo stato delle richieste e le versioni dei pesi, con dei filtri;
+- simulare la variazione del peso di un arco e vedere il risultato migliore con la sua configurazione dei pesi;
+- gestire i token di ogni utente, con una rotta riservata all'admin per la ricarica.
+
+Tutte le rotte, tranne `GET /health`, sono protette da JWT RS256.
 
 ## Stack
 
