@@ -4,9 +4,9 @@ import { User } from '../models';
 
 /** Accesso ai dati degli utenti. */
 export class UserDao {
-  /** Cerca un utente per id, o null se non esiste. */
-  static findById(id: number): Promise<User | null> {
-    return User.findByPk(id);
+  /** Cerca un utente per id, o null se non esiste. Con una transazione la lettura usa la sua stessa connessione. */
+  static findById(id: number, tx?: Transaction): Promise<User | null> {
+    return User.findByPk(id, { transaction: tx });
   }
 
   /** Cerca un utente per email, o null se non esiste. */

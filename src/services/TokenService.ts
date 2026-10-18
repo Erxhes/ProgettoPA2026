@@ -19,7 +19,8 @@ export class TokenService {
   static async charge(userId: number, cost: number, tx?: Transaction): Promise<number> {
     const remaining = await UserDao.deductTokens(userId, cost, tx);
     if (remaining === null) {
-      const user = await UserDao.findById(userId);
+      // Stessa transazione dell'addebito: una seconda connessione dal pool, con molte richieste insieme, lo esaurirebbe
+      const user = await UserDao.findById(userId, tx);
       const balance = user ? Number(user.tokens) : 0;
       // Saldo a zero: messaggio generico; saldo positivo ma sotto il costo: indica costo e saldo
       if (balance <= 0) throw ErrorFactory.insufficientTokens();
