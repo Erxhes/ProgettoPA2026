@@ -207,3 +207,118 @@ I pesi di una richiesta *pending* non toccano il modello: l'esecuzione usa sempr
 
 ![Diagramma di sequenza della rotta di verifica del servizio](docs/diagrammi/Verifica_del_servizio.png)
 
+### Pattern usati e motivazioni
+
+La specifica non indica quali pattern usare, ma chiede di documentarli e di motivarli.
+
+#### MVC con Service Layer
+
+Il progetto è organizzato in strati: le rotte (`src/routes/`) inoltrano la richiesta al controller (`src/controllers/`), che legge i dati già validati, chiama un servizio (`src/services/`) e scrive la risposta JSON, che è la "view" dell'MVC (il client, per esempio Postman, non fa parte del back-end). Le regole di business (costi dei token, media esponenziale, versioni, simulazione) stanno nei servizi e si provano senza HTTP: per esempio `tests/alphaAndBlend.test.ts` verifica la media esponenziale chiamando direttamente `blendWeight`. In questo modo i controller restano sottili e le regole non dipendono da Express.
+
+```ts
+// src/controllers/ModelController.ts
+  /** POST /models */
+  static async create(req: Request, res: Response): Promise<void> {
+    const { name, graph } = req.body as { name: string; graph: GraphInput };
+    res.status(201).json(await ModelService.create(ModelController.userId(req), name, graph));
+  }
+```
+
+#### DAO
+
+Le query al database non stanno nei servizi ma nelle classi di `src/dao/` (`UserDao`, `ModelDao`, `WeightRequestDao`), che espongono metodi con nomi di dominio come `deductTokens`, `lockById` o `findLatestVersion`. Qui vivono anche le operazioni delicate: l'addebito dei token è una sola `UPDATE ... WHERE tokens >= :amount`, che impedisce a due richieste concorrenti di portare il saldo sotto zero, e il blocco `SELECT ... FOR UPDATE` serializza le approvazioni sullo stesso modello. Nei test i DAO sono sostituiti da mock, quindi non serve il database. Le transazioni le aprono i servizi e le passano ai DAO, e `WeightRequestService` modifica direttamente l'istanza `WeightChangeRequest` prima di farla salvare al DAO.
+
+```ts
+// src/dao/UserDao.ts
+  static async deductTokens(userId: number, amount: number, tx?: Transaction): Promise<number | null> {
+    const [rows] = await Database.getInstance().query(
+      'UPDATE users SET tokens = tokens - :amount WHERE id = :id AND tokens >= :amount RETURNING tokens',
+      { replacements: { amount: amount.toFixed(2), id: userId }, transaction: tx },
+    );
+    const updated = rows as { tokens: string }[];
+    return updated.length === 0 ? null : Number(updated[0].tokens);
+  }
+```
+
+#### Chain of Responsibility, nella variante a pipeline di Express
+
+I controlli sulla richiesta sono middleware (`src/middleware/`) messi in catena: ognuno fa un solo controllo e passa al successivo con `next()`, oppure interrompe la catena con `next(err)`. `authenticate` verifica il JWT, `checkTokens` controlla che l'utente abbia ancora token, `requireRole` limita la rotta a un ruolo e `validateBody`, `validateParams` e `validateQuery` validano i dati. `authenticate` e `checkTokens` sono applicati una volta sola al router principale; ogni rotta aggiunge gli anelli che le servono, per esempio solo la ricarica usa `requireRole('admin')`. L'ordine conta: `checkTokens` viene dopo `authenticate` perché serve sapere chi è l'utente, e `requireRole` viene dopo `checkTokens`, quindi a token finiti anche l'admin riceve 401.
+
+```ts
+// src/routes/index.ts
+apiRouter.use(authenticate, checkTokens);
+apiRouter.use('/admin', adminRoutes);
+```
+
+```ts
+// src/routes/adminRoutes.ts
+adminRoutes.post('/recharge', requireRole('admin'), validateBody(rechargeSchema), asyncHandler(AdminController.recharge));
+```
+
+**Catena di middleware per rotta**
+
+`express.json()` (lettura del body) è applicato a tutta l'applicazione. `authenticate` e `checkTokens` sono applicati a ogni rotta registrata in `apiRouter`; la tabella elenca la catena nell'ordine di esecuzione, prima del controller (sempre dietro `asyncHandler`).
+
+| Rotta | Catena in ordine |
+|---|---|
+| `GET /health` | nessuna catena: è registrata in `app.ts` prima di `apiRouter` |
+| `POST /admin/recharge` | `authenticate`, `checkTokens`, `requireRole('admin')`, `validateBody(rechargeSchema)` |
+| `POST /models` | `authenticate`, `checkTokens`, `validateBody(createModelSchema)` |
+| `POST /models/:id/execute` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)`, `validateBody(executeModelSchema)` |
+| `POST /models/:id/simulate` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)`, `validateBody(simulationSchema)` |
+| `GET /models/:id/versions` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)`, `validateQuery(versionsQuerySchema)` |
+| `POST /models/:id/weight-requests` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)`, `validateBody(createWeightRequestSchema)` |
+| `GET /weight-requests` | `authenticate`, `checkTokens`, `validateQuery(requestsQuerySchema)` |
+| `PATCH /weight-requests/:id/approve` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)` |
+| `PATCH /weight-requests/:id/reject` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)`, `validateBody(rejectWeightRequestSchema)` |
+| rotta inesistente | `authenticate`, `checkTokens`, poi `notFound` (404) |
+
+Solo `/admin/recharge` usa `requireRole`. Per approvare o rifiutare una richiesta non basta il ruolo: bisogna essere il proprietario di quel modello, e questo lo controlla il servizio. Dopo `apiRouter` ci sono `notFound` e `errorHandler`.
+
+#### Factory (static factory)
+
+`ErrorFactory` (`src/errors/ErrorFactory.ts`) crea gli errori applicativi con metodi statici (`unauthorized`, `forbidden`, `badRequest`, `notFound`, `conflict` e così via), ognuno dei quali restituisce un `AppError` con status, codice e messaggio. Serve a definire ogni errore in un solo punto: `checkTokens` e `TokenService.charge` producono lo stesso 401 `INSUFFICIENT_TOKENS`. Middleware e servizi sollevano l'errore, e l'`errorHandler` (`src/middleware/errorHandler.ts`) lo riconosce con `instanceof` e risponde con il suo status e il suo codice, come chiede la specifica, che vuole gli errori gestiti dagli strati middleware sollevando eccezioni.
+
+```ts
+// src/errors/ErrorFactory.ts
+  /** 401: i token dell'utente sono terminati. */
+  static insufficientTokens(message = 'Token terminati o insufficienti'): AppError {
+    return new AppError(401, 'INSUFFICIENT_TOKENS', message);
+  }
+```
+
+```ts
+// src/middleware/errorHandler.ts
+  const appError = err instanceof AppError ? err : fromBodyParser(err);
+  if (appError) {
+    res.status(appError.status).json({ error: { code: appError.code, message: appError.message } });
+    return;
+  }
+```
+
+#### Singleton
+
+`Database` (`src/config/database.ts`) garantisce una sola istanza Sequelize per tutto il processo. Il costruttore è privato, quindi non si può scrivere `new Database()`: l'istanza si ottiene con `Database.getInstance()`, che la crea alla prima chiamata e la restituisce alle successive. Serve a condividere un solo pool di connessioni tra DAO e servizi, senza passare l'oggetto Sequelize come parametro; `tests/setup.test.ts` verifica che due chiamate restituiscano lo stesso oggetto.
+
+```ts
+// src/config/database.ts
+  private constructor() {}
+
+  /** Restituisce l'istanza Sequelize, creandola alla prima chiamata. */
+  static getInstance(): Sequelize {
+    if (!Database.instance) {
+      Database.instance = new Sequelize(env.db.name, env.db.user, env.db.password, {
+        host: env.db.host,
+        port: env.db.port,
+        dialect: 'postgres',
+        logging: false,
+      });
+    }
+    return Database.instance;
+  }
+```
+
+Due cose non sono pattern ma aiutano. `asyncHandler` (`src/middleware/asyncHandler.ts`) è una piccola funzione che passa a `next()` gli errori dei gestori asincroni, così arrivano all'`errorHandler`. Le transazioni le aprono i servizi con `Database.getInstance().transaction(...)`, così le scritture vanno a buon fine tutte insieme oppure nessuna.
+
+Gli errori si gestiscono solo nei middleware: controller e servizi non scrivono mai risposte di errore, lanciano un `AppError` e l'`errorHandler` lo trasforma in JSON `{ "error": { "code", "message" } }`. Gli errori imprevisti diventano un 500 generico.
+
