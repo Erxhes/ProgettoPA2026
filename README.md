@@ -447,7 +447,7 @@ Sono presenti **69 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e 
 | `modelRoutes`, `executeRollback` | creazione con e senza credito, esecuzione, nodo sconosciuto, logica del rollback dell'addebito |
 | `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, alpha letto dall'ambiente all'avvio |
 | `weightRequestRoutes`, `weightRequestAtomicity` | creazione, validazione del peso, approvazione, rifiuto, 403 e 409, approvazione doppia, logica del rollback |
-| `queryRoutes`, `queryFilters` | filtri di richieste e versioni, data non valida, visibilità delle richieste |
+| `queryRoutes`, `queryFilters` | filtri delle richieste in AND, data non valida, visibilità delle richieste, elenco delle versioni |
 | `simulation` | passi da 1 a 2 con passo 0.05, validazione dei range, best result e parità di costo, nessun addebito di token |
 | `errorHandler` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli |
 | `seed` | il seed gira in un'unica transazione e, con la transazione simulata, annulla tutto se un inserimento fallisce |
