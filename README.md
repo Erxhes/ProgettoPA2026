@@ -322,9 +322,7 @@ Due cose non sono pattern ma aiutano. `asyncHandler` (`src/middleware/asyncHandl
 
 Gli errori si gestiscono solo nei middleware: controller e servizi non scrivono mai risposte di errore, lanciano un `AppError` e l'`errorHandler` lo trasforma in JSON `{ "error": { "code", "message" } }`. Gli errori imprevisti diventano un 500 generico.
 
-## Decisioni di progetto
-
-Dove la specifica lascia spazio ho deciso così:
+## Note
 
 - Se i token non bastano, la risposta è 401 `INSUFFICIENT_TOKENS`, come quando i token sono finiti. Il saldo si scala con un'unica `UPDATE ... WHERE tokens >= costo`, nella stessa transazione che crea il modello: se il credito non basta, non viene creato niente.
 - Il costo (0.20 per nodo e 0.01 per arco) si calcola in centesimi, con numeri interi, per evitare gli errori dei numeri decimali.
