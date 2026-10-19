@@ -32,9 +32,441 @@
     {
       "key": "today",
       "value": ""
+    },
+    {
+      "key": "regEmail",
+      "value": ""
+    },
+    {
+      "key": "regUsername",
+      "value": ""
+    },
+    {
+      "key": "regPassword",
+      "value": ""
+    },
+    {
+      "key": "regToken",
+      "value": ""
     }
   ],
   "item": [
+    {
+      "name": "0 - Registrazione e login",
+      "item": [
+        {
+          "name": "Registrazione di un nuovo utente -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{regEmail}}\",\n  \"username\": \"{{regUsername}}\",\n  \"password\": \"{{regPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Usa email e username casuali, così la collection si può rieseguire."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Email e username nuovi a ogni esecuzione",
+                  "const suffisso = Date.now().toString(36);",
+                  "pm.collectionVariables.set('regEmail', 'prova.' + suffisso + '@example.com');",
+                  "pm.collectionVariables.set('regUsername', ('prova_' + suffisso).slice(0, 20));",
+                  "pm.collectionVariables.set('regPassword', 'Prova2026!');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Ruolo user e 50 token iniziali\", function () { pm.expect(body.user.role).to.eql(\"user\"); pm.expect(body.user.tokens).to.eql(50); });",
+                  "pm.test(\"Restituisce un JWT e non la password\", function () { pm.expect(body.token).to.be.a(\"string\"); pm.expect(JSON.stringify(body)).to.not.include(\"passwordHash\"); });",
+                  "pm.collectionVariables.set(\"regToken\", body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrazione con la stessa email -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{regEmail}}\",\n  \"username\": \"altro_utente\",\n  \"password\": \"{{regPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Codice errore CONFLICT\", function () { pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrazione con il ruolo nel corpo -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin.finto@example.com\",\n  \"username\": \"admin_finto\",\n  \"password\": \"{{regPassword}}\",\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(pm.response.json().error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrazione con password troppo corta -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"corta@example.com\",\n  \"username\": \"corta\",\n  \"password\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Codice errore BAD_REQUEST\", function () { pm.expect(pm.response.json().error.code).to.eql(\"BAD_REQUEST\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con le credenziali del nuovo utente -> 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{regEmail}}\",\n  \"password\": \"{{regPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Restituisce il JWT e i dati dell'utente\", function () { pm.expect(body.token).to.be.a(\"string\"); pm.expect(body.user.email).to.eql(pm.collectionVariables.get(\"regEmail\")); });",
+                  "pm.collectionVariables.set(\"regToken\", body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Il JWT del login funziona su una rotta protetta -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{regToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/weight-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "weight-requests"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con password sbagliata -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{regEmail}}\",\n  \"password\": \"Sbagliata1!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Codice errore UNAUTHORIZED\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHORIZED\"); });",
+                  "pm.test(\"Messaggio generico\", function () { pm.expect(pm.response.json().error.message).to.eql(\"Credenziali non valide\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con email sconosciuta -> 401 (stesso messaggio)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nessuno@example.com\",\n  \"password\": \"Qualcosa1!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Codice errore UNAUTHORIZED\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHORIZED\"); });",
+                  "pm.test(\"Messaggio generico\", function () { pm.expect(pm.response.json().error.message).to.eql(\"Credenziali non valide\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login a 0 token (Elena Greco) -> 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"elena.greco@example.com\",\n  \"password\": \"Elena2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Richiede il database appena seminato: l'utente Elena Greco ha 0 token."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Il login funziona anche con 0 token\", function () { pm.expect(pm.response.json().user.tokens).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "1 - Autenticazione, ruoli e token",
       "item": [
@@ -189,7 +621,7 @@
           ]
         },
         {
-          "name": "Health senza JWT -> 200 (unica rotta pubblica)",
+          "name": "Health senza JWT -> 200 (rotta pubblica)",
           "request": {
             "method": "GET",
             "header": [],

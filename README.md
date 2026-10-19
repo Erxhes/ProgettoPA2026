@@ -29,9 +29,10 @@ Cosa si può fare:
 - chiedere il cambio di peso di un arco: la richiesta parte in stato *pending* e poi diventa *approved* o *rejected* (con motivazione);
 - consultare lo stato delle richieste e le versioni dei pesi, con dei filtri;
 - simulare la variazione del peso di un arco e vedere il risultato migliore con la sua configurazione dei pesi;
-- gestire i token di ogni utente, con una rotta riservata all'admin per la ricarica.
+- gestire i token di ogni utente, con una rotta riservata all'admin per la ricarica;
+- registrarsi e accedere con email e password per ottenere il JWT.
 
-Tutte le rotte, tranne `GET /health`, sono protette da JWT RS256.
+Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`, sono protette da JWT RS256.
 
 ## Stack
 
@@ -41,7 +42,7 @@ Tutte le rotte, tranne `GET /health`, sono protette da JWT RS256.
 | Web framework | Express 5 |
 | ORM e database | Sequelize 6, PostgreSQL 16 (processo separato, avviato da docker-compose) |
 | Grafo | `node-dijkstra` |
-| Autenticazione | JWT con algoritmo RS256 (`jsonwebtoken`); la chiave privata è in `.env` |
+| Autenticazione | JWT con algoritmo RS256 (`jsonwebtoken`); password cifrate con `bcryptjs`; la chiave privata è in `.env` |
 | Validazione | `zod` |
 | Test | Jest, ts-jest, supertest |
 | Contenitori | Docker e docker-compose |
@@ -49,12 +50,14 @@ Tutte le rotte, tranne `GET /health`, sono protette da JWT RS256.
 
 ## Rotte
 
-Tutte le rotte, tranne `GET /health`, richiedono l'header `Authorization: Bearer <JWT>` e passano dal controllo dei token residui:
+Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`, richiedono l'header `Authorization: Bearer <JWT>` e passano dal controllo dei token residui:
 se l'utente ha finito i token ogni richiesta restituisce **401**.
 
 | Metodo e percorso | Chi può chiamarla | Descrizione |
 |---|---|---|
 | `GET /health` | pubblica | verifica che il servizio sia attivo |
+| `POST /auth/register` | pubblica | registra un utente: body `{ email, username, password }`; ruolo `user` e 50 token iniziali; risponde con i dati dell'utente e un JWT |
+| `POST /auth/login` | pubblica | accesso: body `{ email, password }`; risponde con i dati dell'utente e un JWT |
 | `POST /admin/recharge` | admin | ricarica un utente: body `{ email, credit }`, il credito si somma al saldo |
 | `POST /models` | utente | crea un modello: body `{ name, graph }`; costo 0.20 per nodo + 0.01 per arco |
 | `POST /models/:id/execute` | utente | esegue il modello: body `{ start, goal }`; stesso costo della creazione |
@@ -64,6 +67,31 @@ se l'utente ha finito i token ogni richiesta restituisce **401**.
 | `GET /weight-requests` | utente | stato delle richieste; filtri `modelId`, `date`, `status` (in AND) |
 | `PATCH /weight-requests/:id/approve` | utente, se proprietario del modello | approva la richiesta e crea la nuova versione |
 | `PATCH /weight-requests/:id/reject` | utente, se proprietario del modello | rifiuta la richiesta; body `{ reason }` obbligatorio |
+
+### Autenticazione
+
+Per usare le rotte protette serve un JWT. Si può ottenere in tre modi:
+
+- registrandosi con `POST /auth/register` (email, username e password): l'utente nasce con ruolo `user` e 50 token, e la risposta contiene già il JWT;
+- accedendo con `POST /auth/login` (email e password), anche con i token finiti: il login funziona, ma le altre rotte rispondono 401;
+- generandolo fuori dal sistema, per esempio su jwt.io con algoritmo RS256 e la stessa chiave privata messa in `.env`, oppure con `npm run token`.
+
+Le password si salvano cifrate (bcrypt) e non compaiono mai nelle risposte. L'admin non si può creare con la registrazione: esiste solo nel seed, e un corpo con il campo `role` viene rifiutato con 400.
+
+Il JWT contiene solo l'essenziale e dura 1 giorno:
+
+```json
+{ "sub": "2", "role": "user" }
+```
+
+`sub` è l'id dell'utente e `role` può essere `user` o `admin`. Esempio di risposta della registrazione:
+
+```json
+{
+  "user": { "id": 6, "email": "mario.rossi@example.com", "username": "mario", "role": "user", "tokens": 50 },
+  "token": "eyJhbGciOiJSUzI1NiIs..."
+}
+```
 
 ### Formato del grafo
 
@@ -140,8 +168,10 @@ Nel sistema ci sono due ruoli: `user` e `admin`. Il proprietario del modello non
 | Consultare lo stato delle richieste | sì | sì | no |
 | Approvare o rifiutare una richiesta | solo se proprietario del modello | solo se proprietario del modello | no |
 | Ricaricare i token di un utente | no (403) | sì | no |
+| Registrarsi | senza JWT | senza JWT | no |
+| Accedere con email e password | senza JWT | senza JWT | no |
 
-Con i token terminati ogni richiesta, di qualunque ruolo, riceve 401.
+Con i token terminati ogni richiesta protetta, di qualunque ruolo, riceve 401; il login resta possibile.
 
 ### Modello dei dati
 
@@ -152,6 +182,18 @@ cambiando solo il peso richiesto. Le versioni precedenti restano intatte e consu
 I pesi di una richiesta *pending* non toccano il modello: l'esecuzione usa sempre la versione più recente.
 
 ### Diagrammi di sequenza
+
+**Registrazione di un utente**
+
+`POST /auth/register`: crea un utente con ruolo `user` e 50 token e restituisce subito il JWT. Rotta pubblica, solo con la validazione del corpo. Successo: 201. Errori: 400 (corpo non valido, anche con campi in più come `role`), 409 (email o username già usati, anche quando due registrazioni uguali arrivano insieme).
+
+![Diagramma di sequenza della registrazione di un utente: validazione, controllo dei duplicati, cifratura della password, creazione e JWT](docs/diagrammi/Registrazione_di_un_utente.png)
+
+**Login di un utente**
+
+`POST /auth/login`: controlla email e password e restituisce il JWT. Rotta pubblica, non controlla i token residui. Successo: 200. Errori: 400 (corpo non valido), 401 (email sconosciuta o password sbagliata, con lo stesso messaggio).
+
+![Diagramma di sequenza del login: validazione, ricerca dell'utente per email, confronto della password e JWT](docs/diagrammi/Login_di_un_utente.png)
 
 **Creazione di un modello con addebito dei token**
 
@@ -203,7 +245,7 @@ I pesi di una richiesta *pending* non toccano il modello: l'esecuzione usa sempr
 
 **Verifica del servizio**
 
-`GET /health`: risponde 200 se il servizio è attivo. È l'unica rotta pubblica, senza JWT.
+`GET /health`: risponde 200 se il servizio è attivo. È una rotta pubblica, senza JWT (come registrazione e login).
 
 ![Diagramma di sequenza della rotta di verifica del servizio](docs/diagrammi/Verifica_del_servizio.png)
 
@@ -262,6 +304,8 @@ adminRoutes.post('/recharge', requireRole('admin'), validateBody(rechargeSchema)
 | Rotta | Catena in ordine |
 |---|---|
 | `GET /health` | nessuna catena: è registrata in `app.ts` prima di `apiRouter` |
+| `POST /auth/register` | solo `validateBody(registerSchema)`: registrata in `app.ts` prima di `apiRouter`, senza JWT |
+| `POST /auth/login` | solo `validateBody(loginSchema)`: registrata in `app.ts` prima di `apiRouter`, senza JWT |
 | `POST /admin/recharge` | `authenticate`, `checkTokens`, `requireRole('admin')`, `validateBody(rechargeSchema)` |
 | `POST /models` | `authenticate`, `checkTokens`, `validateBody(createModelSchema)` |
 | `POST /models/:id/execute` | `authenticate`, `checkTokens`, `validateParams(idParamSchema)`, `validateBody(executeModelSchema)` |
@@ -331,6 +375,7 @@ Gli errori si gestiscono solo nei middleware: controller e servizi non scrivono 
 - Ogni approvazione crea una nuova versione dei pesi, e quando si esegue un modello si usa sempre l'ultima.
 - La simulazione non consuma token e non modifica il modello. Il risultato migliore è quello con il costo del percorso più basso; a parità vince il peso più piccolo.
 - Quando l'admin ricarica un utente, l'importo viene sommato al saldo e non lo sostituisce.
+- Chi si registra parte con 50 token e ruolo `user`. Il login non guarda i token residui: chi li ha finiti può accedere, ma le altre rotte rispondono 401 finché l'admin non lo ricarica.
 
 ## Errori
 
@@ -339,11 +384,11 @@ Formato: `{ "error": { "code": "...", "message": "..." } }`.
 | Status | Codice | Quando |
 |---|---|---|
 | 400 | `BAD_REQUEST` | corpo, parametri o filtri non validi; JSON malformato; nodo sconosciuto; range di simulazione non ammissibile |
-| 401 | `UNAUTHORIZED` | JWT assente, malformato, scaduto o con firma errata; utente inesistente |
+| 401 | `UNAUTHORIZED` | JWT assente, malformato, scaduto o con firma errata; utente inesistente; email o password del login sbagliate |
 | 401 | `INSUFFICIENT_TOKENS` | token terminati, o insufficienti a coprire il costo |
 | 403 | `FORBIDDEN` | ruolo non autorizzato (non admin) o non proprietario del modello |
 | 404 | `NOT_FOUND` | modello, arco, richiesta o utente inesistenti; rotta sconosciuta (con un JWT valido: senza JWT si ottiene 401) |
-| 409 | `CONFLICT` | richiesta di cambio peso già approvata o rifiutata |
+| 409 | `CONFLICT` | richiesta di cambio peso già approvata o rifiutata; email o username già registrati |
 | 413 | `PAYLOAD_TOO_LARGE` | body della richiesta oltre il limite di 100 kb |
 | 500 | `INTERNAL_ERROR` | errore inatteso (messaggio generico) |
 
@@ -356,13 +401,15 @@ Per azzerare e ripopolare:
 docker compose exec app npm run seed -- --force
 ```
 
-| Id | Email | Ruolo | Token iniziali | Note |
-|---|---|---|---|---|
-| 1 | `chiara.ferri@example.com` | admin | 1000 | amministratore; anche l'admin è soggetto al controllo dei token |
-| 2 | `luca.bianchi@example.com` | user | 100 | proprietario del modello 1 (Rete stradale Ancona) |
-| 3 | `sofia.romano@example.com` | user | 100 | proprietario del modello 2 (Rete ciclabile Jesi) |
-| 4 | `andrea.conti@example.com` | user | 50 | utente generico |
-| 5 | `elena.greco@example.com` | user | 0 | senza token: per provare il 401 a token finiti |
+| Id | Email | Username | Password di prova | Ruolo | Token iniziali | Note |
+|---|---|---|---|---|---|---|
+| 1 | `chiara.ferri@example.com` | `chiara` | `Chiara2026!` | admin | 1000 | amministratore; anche l'admin è soggetto al controllo dei token |
+| 2 | `luca.bianchi@example.com` | `luca` | `Luca2026!` | user | 100 | proprietario del modello 1 (Rete stradale Ancona) |
+| 3 | `sofia.romano@example.com` | `sofia` | `Sofia2026!` | user | 100 | proprietario del modello 2 (Rete ciclabile Jesi) |
+| 4 | `andrea.conti@example.com` | `andrea` | `Andrea2026!` | user | 50 | utente generico |
+| 5 | `elena.greco@example.com` | `elena` | `Elena2026!` | user | 0 | senza token: per provare il 401 a token finiti |
+
+Le password servono solo per la prova: nel database sono salvate cifrate.
 
 | Modello | Proprietario | Nodi | Archi | Versioni |
 |---|---|---|---|---|
@@ -414,7 +461,7 @@ Prerequisiti: Docker con Compose v2.
 
    L'API risponde su `http://localhost:3000` (`GET /health`). Il database non è esposto sull'host: resta nella rete interna di compose.
 
-4. Per provare le rotte servono dei token. I JWT generati con `npm run token` durano 1 giorno: vanno rigenerati prima di provare la collection Postman se sono scaduti. Per ottenere un token per ogni utente del seed:
+4. Per provare le rotte servono dei token. Li puoi ottenere con il login (`POST /auth/login`, vedi la sezione Autenticazione) oppure con lo script del progetto. I JWT generati con `npm run token` durano 1 giorno: vanno rigenerati prima di provare la collection Postman se sono scaduti. Per ottenere un token per ogni utente del seed:
 
    ```bash
    docker compose exec app npm run token -- all
@@ -432,11 +479,13 @@ curl -s -X POST http://localhost:3000/models/1/execute \
 
 Per fermare tutto: `docker compose down` (aggiungi `-v` per cancellare anche i dati del database).
 
+Se avevi già avviato una versione precedente del progetto, usa `docker compose down -v` prima di ripartire: le tabelle già create non ricevono le nuove colonne `username` e `passwordHash`.
+
 ## Test
 
 ![Risultati test](docs/test_suites.png)
 
-Sono presenti **67 test Jest** in 17 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
+Sono presenti **74 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
 
 | Suite | Cosa verifica |
 |---|---|
@@ -450,6 +499,7 @@ Sono presenti **67 test Jest** in 17 suite (`tests/`). Jest sostituisce i DAO e 
 | `queryRoutes`, `queryFilters` | filtri delle richieste in AND, data non valida, visibilità delle richieste, elenco delle versioni |
 | `simulation` | passi da 1 a 2 con passo 0.05, validazione dei range, best result e parità di costo, nessun addebito di token |
 | `errorHandler` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli |
+| `authRoutes` | registrazione (201 con 50 token, 409 se email o username sono già usati o se il duplicato lo scopre il database, 400 con il ruolo nel corpo) e login (200 anche a 0 token, 401 con lo stesso messaggio per password sbagliata ed email sconosciuta) |
 | `seed` | il seed gira in un'unica transazione e, con la transazione simulata, annulla tutto se un inserimento fallisce |
 
 ```bash
@@ -464,7 +514,7 @@ npx tsc --noEmit                     # controllo dei tipi
 
 Nella cartella `postman/` ci sono:
 
-- `grafo-pa.postman_collection.json`: 56 richieste in 5 cartelle (autenticazione e ruoli, admin, modelli, versioni e simulazione, richieste di cambio peso), con script di test (117 asserzioni) che verificano status e contenuto delle risposte, compresi i casi di errore;
+- `grafo-pa.postman_collection.json`: 65 richieste in 6 cartelle (registrazione e login, autenticazione e ruoli, admin, modelli, versioni e simulazione, richieste di cambio peso), con script di test (137 asserzioni) che verificano status e contenuto delle risposte, compresi i casi di errore;
 - `grafo-pa.postman_environment.json`: variabile `baseUrl` e i token `adminToken`, `ownerAnconaToken`, `ownerJesiToken`, `userToken`, `noTokensToken`.
 
 Procedura:
@@ -483,7 +533,7 @@ src/
   config/        variabili d'ambiente, controllo di alpha, connessione al database (Singleton)
   models/        modelli Sequelize e relazioni
   dao/           accesso ai dati
-  services/      logica di business (token, esecuzione, richieste, versioni, simulazione, JWT)
+  services/      logica di business (accesso, token, esecuzione, richieste, versioni, simulazione, JWT)
   controllers/   lettura della richiesta e risposta HTTP
   routes/        definizione degli endpoint
   middleware/    JWT, token residui, ruoli, validazione, gestione errori

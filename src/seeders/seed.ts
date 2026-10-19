@@ -1,6 +1,7 @@
 import { Transaction } from 'sequelize';
 import { Database } from '../config/database';
 import { Edge, GraphModel, ModelVersion, User, WeightChangeRequest } from '../models';
+import { AuthService } from '../services/AuthService';
 
 /** Arco dei grafi iniziali: [da, a, peso]. */
 type EdgeDef = [string, string, number];
@@ -78,14 +79,34 @@ export async function runSeed(force: boolean): Promise<void> {
     return;
   }
 
+  // Password di prova degli utenti (scritte anche nel README), cifrate prima di aprire la transazione
+  const [hashChiara, hashLuca, hashSofia, hashAndrea, hashElena] = await Promise.all(
+    ['Chiara2026!', 'Luca2026!', 'Sofia2026!', 'Andrea2026!', 'Elena2026!'].map((p) => AuthService.hashPassword(p)),
+  );
+
   // Un'unica transazione: se un inserimento fallisce non resta un seed a metà (che il controllo
   // sugli utenti considererebbe già eseguito).
   const adminId = await sequelize.transaction(async (tx) => {
-    const admin = await User.create({ email: 'chiara.ferri@example.com', role: 'admin', tokens: 1000 }, { transaction: tx });
-    const luca = await User.create({ email: 'luca.bianchi@example.com', role: 'user', tokens: 100 }, { transaction: tx });
-    const sofia = await User.create({ email: 'sofia.romano@example.com', role: 'user', tokens: 100 }, { transaction: tx });
-    const andrea = await User.create({ email: 'andrea.conti@example.com', role: 'user', tokens: 50 }, { transaction: tx });
-    await User.create({ email: 'elena.greco@example.com', role: 'user', tokens: 0 }, { transaction: tx });
+    const admin = await User.create(
+      { email: 'chiara.ferri@example.com', username: 'chiara', passwordHash: hashChiara, role: 'admin', tokens: 1000 },
+      { transaction: tx },
+    );
+    const luca = await User.create(
+      { email: 'luca.bianchi@example.com', username: 'luca', passwordHash: hashLuca, role: 'user', tokens: 100 },
+      { transaction: tx },
+    );
+    const sofia = await User.create(
+      { email: 'sofia.romano@example.com', username: 'sofia', passwordHash: hashSofia, role: 'user', tokens: 100 },
+      { transaction: tx },
+    );
+    const andrea = await User.create(
+      { email: 'andrea.conti@example.com', username: 'andrea', passwordHash: hashAndrea, role: 'user', tokens: 50 },
+      { transaction: tx },
+    );
+    await User.create(
+      { email: 'elena.greco@example.com', username: 'elena', passwordHash: hashElena, role: 'user', tokens: 0 },
+      { transaction: tx },
+    );
 
     const ancona = await GraphModel.create({ name: 'Rete stradale Ancona', ownerId: luca.id }, { transaction: tx });
     await createVersion(ancona.id, 1, ANCONA, tx);

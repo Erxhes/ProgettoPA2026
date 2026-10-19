@@ -14,6 +14,16 @@ export class UserDao {
     return User.findOne({ where: { email } });
   }
 
+  /** Cerca un utente per username, o null se non esiste. */
+  static findByUsername(username: string): Promise<User | null> {
+    return User.findOne({ where: { username } });
+  }
+
+  /** Crea un utente con ruolo `user`; `passwordHash` è la password già cifrata. */
+  static create(data: { email: string; username: string; passwordHash: string; tokens: number }): Promise<User> {
+    return User.create({ ...data, role: 'user' });
+  }
+
   /** Somma `amount` al saldo con un incremento atomico e restituisce l'utente aggiornato. */
   static async addTokens(user: User, amount: number): Promise<User> {
     await user.increment('tokens', { by: amount });
