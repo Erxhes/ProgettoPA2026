@@ -377,7 +377,7 @@ Richieste iniziali: 2 approvate (che hanno generato le versioni 2), 1 *pending* 
 
 Prerequisiti: Docker con Compose v2.
 
-1. **Configurazione.** Copia il file di esempio e imposta almeno `DB_PASSWORD` (il file `.env` non è tracciato da git):
+1. Copia il file di esempio e imposta almeno `DB_PASSWORD` (il file `.env` non è tracciato da git):
 
    ```bash
    cp .env.example .env
@@ -390,7 +390,7 @@ Prerequisiti: Docker con Compose v2.
    | `JWT_PRIVATE_KEY` | chiave privata RS256 in formato PEM su una riga, con le newline scritte come `\n` |
    | `ALPHA` | coefficiente della media esponenziale, tra 0 e 1 (esclusi); se errato si usa 0.9 |
 
-2. **Chiave RS256.** Genera una chiave privata e incolla in `.env` la riga `JWT_PRIVATE_KEY="..."` (su una sola riga, con le newline scritte come `\n`).
+2. Genera una chiave privata RS256 e incolla in `.env` la riga `JWT_PRIVATE_KEY="..."` (su una sola riga, con le newline scritte come `\n`).
    La chiave non va mai committata. Con `openssl`:
 
    ```bash
@@ -406,7 +406,7 @@ Prerequisiti: Docker con Compose v2.
 
    Nel container i file `keys/` spariscono insieme al container (`--rm`): conta solo la riga stampata. Con Node installato in locale: `npm install && npm run keys` (qui `keys/` è una cartella ignorata da git).
 
-3. **Avvio.** Costruisce le immagini, avvia Postgres e l'applicazione ed esegue il seed:
+3. Avvia tutto: il comando costruisce le immagini, avvia Postgres e l'applicazione ed esegue il seed:
 
    ```bash
    docker compose up --build
@@ -414,7 +414,7 @@ Prerequisiti: Docker con Compose v2.
 
    L'API risponde su `http://localhost:3000` (`GET /health`). Il database non è esposto sull'host: resta nella rete interna di compose.
 
-4. **Token per provare le rotte.** I JWT generati con `npm run token` durano 1 giorno: vanno rigenerati prima di provare la collection Postman se sono scaduti. Per ottenere un token per ogni utente del seed:
+4. Per provare le rotte servono dei token. I JWT generati con `npm run token` durano 1 giorno: vanno rigenerati prima di provare la collection Postman se sono scaduti. Per ottenere un token per ogni utente del seed:
 
    ```bash
    docker compose exec app npm run token -- all
@@ -472,7 +472,7 @@ Procedura:
 1. Importa in Postman la collection e il file di ambiente e seleziona l'ambiente.
 2. Parti da un database appena seminato: `docker compose exec app npm run seed -- --force`.
 3. Genera i token con `docker compose exec app npm run token -- all` (stampa righe `nome=token`) e incollali nelle variabili dell'ambiente. I token durano 1 giorno: rigenerali prima di ogni sessione di prova.
-4. Esegui la collection con il *Collection Runner*, **in ordine**: le richieste sono pensate per essere eseguite di seguito e si passano id creati a runtime (modello e richieste). Dopo una esecuzione ripeti il seed prima di rilanciarla.
+4. Esegui la collection con il *Collection Runner*, **in ordine**: le richieste sono pensate per essere eseguite di seguito e si passano id creati a runtime (modello e richieste). Dopo un'esecuzione ripeti il seed prima di rilanciarla.
 
 Da riga di comando è possibile eseguire la stessa collection con `newman` (non incluso nelle dipendenze).
 

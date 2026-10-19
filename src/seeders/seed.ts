@@ -2,7 +2,7 @@ import { Transaction } from 'sequelize';
 import { Database } from '../config/database';
 import { Edge, GraphModel, ModelVersion, User, WeightChangeRequest } from '../models';
 
-/** Arco del grafo di demo: [da, a, peso]. */
+/** Arco dei grafi iniziali: [da, a, peso]. */
 type EdgeDef = [string, string, number];
 
 /** Luoghi della rete stradale di Ancona (le sigle servono solo a scrivere gli archi in modo compatto). */
@@ -67,7 +67,7 @@ function withUpdatedWeight(edges: EdgeDef[], from: string, to: string, newWeight
 }
 
 /**
- * Popola il database con i dati demo. Con `force` azzera prima le tabelle;
+ * Popola il database con i dati iniziali. Con `force` azzera prima le tabelle;
  * senza `force` non fa nulla se esistono già degli utenti (idempotente).
  */
 export async function runSeed(force: boolean): Promise<void> {

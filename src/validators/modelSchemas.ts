@@ -3,7 +3,9 @@ import { z } from 'zod';
 /** Grafo nel formato di node-dijkstra: nodo -> { vicino: peso }. */
 export type GraphInput = Record<string, Record<string, number>>;
 
+/** Numero massimo di nodi di un grafo. */
 export const MAX_NODES = 500;
+/** Numero massimo di archi di un grafo. */
 export const MAX_EDGES = 5000;
 const MAX_WEIGHT = 1_000_000;
 

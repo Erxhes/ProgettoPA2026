@@ -21,7 +21,7 @@ export class UserDao {
   }
 
   /**
-   * Sottrae `amount` dal saldo solo se è sufficiente (un'unica UPDATE condizionata, senza corse tra richieste).
+   * Sottrae `amount` dal saldo solo se è sufficiente (un'unica UPDATE condizionata, che funziona anche se arrivano più richieste insieme).
    * @returns il saldo residuo, oppure null se il saldo non basta
    */
   static async deductTokens(userId: number, amount: number, tx?: Transaction): Promise<number | null> {

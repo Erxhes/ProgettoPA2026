@@ -10,7 +10,6 @@ describe('env.alpha all\'avvio', () => {
     jest.isolateModules(() => {
       // evita che dotenv rilegga un eventuale file .env locale
       jest.doMock('dotenv', () => ({ __esModule: true, default: { config: jest.fn() } }));
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       alpha = (require('../src/config/env') as typeof import('../src/config/env')).env.alpha;
     });
     return alpha;
