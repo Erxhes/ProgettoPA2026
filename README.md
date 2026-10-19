@@ -438,20 +438,20 @@ Per fermare tutto: `docker compose down` (aggiungi `-v` per cancellare anche i d
 
 ![Risultati test](docs/test_suites.png)
 
-Sono presenti **235 test Jest** in 25 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
+Sono presenti **69 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
 
 | Suite | Cosa verifica |
 |---|---|
-| `setup`, `validateConfig` | `GET /health`, Singleton del database, controllo di porte e chiave JWT all'avvio |
-| `authenticate`, `roleAndTokens`, `tokenCharge` | JWT valido, mancante, malformato, firmato con un'altra chiave, scaduto, HS256, `alg: none`; ruoli; token finiti: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
-| `adminRoutes`, `rechargeDecimals`, `rechargeEmail` | ricarica: 401, 403, 400, 404, 200; al massimo 2 decimali; email in minuscolo |
-| `modelValidation`, `isolatedNodes`, `weightLimit` | calcolo del costo, validazione del grafo, nodi isolati e `__proto__`, limite sul peso |
-| `modelRoutes`, `executeRollback`, `executionTime` | creazione con e senza credito, esecuzione, start uguale a goal, logica del rollback dell'addebito, tempo di esecuzione |
+| `setup`, `validateConfig` | `GET /health`, Singleton del database, configurazione valida e chiave JWT vuota rifiutata all'avvio |
+| `authenticate`, `roleAndTokens`, `tokenCharge` | JWT valido, mancante, firmato con un'altra chiave, scaduto, HS256; ruoli; token finiti: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
+| `adminRoutes` | ricarica: 401, 403, 400, 404, 200 |
+| `modelValidation` | calcolo del costo, validazione del grafo e del nome |
+| `modelRoutes`, `executeRollback` | creazione con e senza credito, esecuzione, nodo sconosciuto, logica del rollback dell'addebito |
 | `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, alpha letto dall'ambiente all'avvio |
-| `weightRequestRoutes`, `weightRequestRules`, `weightRequestAtomicity` | creazione, approvazione, rifiuto, 403 e 409, validazione del peso, approvazione doppia, logica del rollback |
-| `queryRoutes`, `queryFilters` | filtri di richieste e versioni, date non valide o di bordo, visibilità, `where` del DAO |
-| `simulation` | passi senza errori di arrotondamento, validazione dei range, best result, nessuna scrittura |
-| `errorHandler`, `bodyParserErrors` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli, JSON malformato (400) e body troppo grande (413) |
+| `weightRequestRoutes`, `weightRequestAtomicity` | creazione, validazione del peso, approvazione, rifiuto, 403 e 409, approvazione doppia, logica del rollback |
+| `queryRoutes`, `queryFilters` | filtri di richieste e versioni, data non valida, visibilità delle richieste |
+| `simulation` | passi da 1 a 2 con passo 0.05, validazione dei range, best result e parità di costo, nessun addebito di token |
+| `errorHandler` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli |
 | `seed` | il seed gira in un'unica transazione e, con la transazione simulata, annulla tutto se un inserimento fallisce |
 
 ```bash

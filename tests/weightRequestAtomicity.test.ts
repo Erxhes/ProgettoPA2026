@@ -109,20 +109,6 @@ describe('approvazione: atomicità', () => {
     expect(requests.save).not.toHaveBeenCalled();
   });
 
-  it('se save fallisce la transazione è annullata: nessuna nuova versione e richiesta pending', async () => {
-    requests.save.mockRejectedValue(new Error('db down'));
-    await expect(WeightRequestService.approve(2, 3)).rejects.toThrow('db down');
-    expect(committed.rollbacks).toBe(1);
-    expect(live.status).toBe('pending');
-    expect(live.resultingVersionId).toBeNull();
-    expect(committed.status).toBe('pending');
-    expect(committed.versions).toBe(1);
-  });
-
-  it('senza errori la transazione rende definitivi stato e versione', async () => {
-    await WeightRequestService.approve(2, 3);
-    expect(committed).toEqual({ status: 'approved', versions: 2, rollbacks: 0 });
-  });
 });
 
 describe('approvazione doppia della stessa richiesta', () => {

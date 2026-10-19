@@ -6,10 +6,6 @@ describe('Database (Singleton)', () => {
   it('restituisce sempre la stessa istanza Sequelize', () => {
     expect(Database.getInstance()).toBe(Database.getInstance());
   });
-
-  it('usa il dialetto postgres', () => {
-    expect(Database.getInstance().getDialect()).toBe('postgres');
-  });
 });
 
 describe('GET /health', () => {

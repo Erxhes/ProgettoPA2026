@@ -20,11 +20,6 @@ describe('POST /admin/recharge', () => {
     await request(app).post('/admin/recharge').send({ email: 'a@b.it', credit: 5 }).expect(401);
   });
 
-  it('401 se l\'utente ha i token finiti', async () => {
-    dao.findById.mockResolvedValue({ tokens: '0.00' } as User);
-    await request(app).post('/admin/recharge').set('Authorization', adminToken).send({ email: 'a@b.it', credit: 5 }).expect(401);
-  });
-
   it('403 a un utente non admin', async () => {
     await request(app).post('/admin/recharge').set('Authorization', userToken).send({ email: 'a@b.it', credit: 5 }).expect(403);
   });

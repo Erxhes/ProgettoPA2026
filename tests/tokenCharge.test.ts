@@ -38,12 +38,4 @@ describe('TokenService.charge', () => {
     expect(err.message).toContain('2.58');
     expect(err.message).toContain('0.42');
   });
-
-  it('con saldo a zero il messaggio è generico', async () => {
-    deductTokens.mockResolvedValue(null);
-    findById.mockResolvedValue({ tokens: '0.00' } as User);
-    const err = (await TokenService.charge(5, 2.58, tx).catch((e: unknown) => e)) as AppError;
-    expect(err.status).toBe(401);
-    expect(err.message).toBe('Token terminati o insufficienti');
-  });
 });

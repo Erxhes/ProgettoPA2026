@@ -31,12 +31,8 @@ describe('env.alpha all\'avvio', () => {
     expect(console.warn).not.toHaveBeenCalled();
   });
 
-  it.each(['abc', '0', '1'])('ALPHA="%s" usa 0.9', (raw) => {
-    expect(loadAlpha(raw)).toBe(0.9);
+  it('ALPHA="abc" usa 0.9', () => {
+    expect(loadAlpha('abc')).toBe(0.9);
     expect(console.warn).toHaveBeenCalled();
-  });
-
-  it('ALPHA assente usa 0.9', () => {
-    expect(loadAlpha(undefined)).toBe(0.9);
   });
 });

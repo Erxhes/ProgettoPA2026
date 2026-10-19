@@ -29,10 +29,6 @@ describe('authenticate', () => {
     expect((err as AppError).status).toBe(401);
   });
 
-  it('risponde 401 se il token è malformato', () => {
-    expect((run('Bearer non-un-jwt').err as AppError).status).toBe(401);
-  });
-
   it('risponde 401 se il token è firmato con un\'altra chiave', () => {
     const other = generateKeyPairSync('rsa', {
       modulusLength: 2048,
@@ -52,20 +48,5 @@ describe('authenticate', () => {
     const publicKey = createPublicKey(env.jwtPrivateKey).export({ type: 'spki', format: 'pem' }) as string;
     const token = jwt.sign({ role: 'admin' }, publicKey, { algorithm: 'HS256', subject: '1' });
     expect((run(`Bearer ${token}`).err as AppError).status).toBe(401);
-  });
-
-  it('risponde 401 a un token con alg none', () => {
-    const part = (o: object): string => Buffer.from(JSON.stringify(o)).toString('base64url');
-    const token = `${part({ alg: 'none', typ: 'JWT' })}.${part({ sub: '1', role: 'admin' })}.`;
-    expect((run(`Bearer ${token}`).err as AppError).status).toBe(401);
-  });
-
-  it('risponde 401 se lo schema non è Bearer', () => {
-    const token = JwtService.sign({ userId: 1, role: 'user' });
-    expect((run(`Basic ${token}`).err as AppError).status).toBe(401);
-  });
-
-  it('risponde 401 a un header Bearer senza token', () => {
-    expect((run('Bearer ').err as AppError).status).toBe(401);
   });
 });

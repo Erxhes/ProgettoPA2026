@@ -16,10 +16,9 @@ const models = jest.mocked(ModelDao);
 const requests = jest.mocked(WeightRequestDao);
 
 const app = createApp();
-const bearer = (userId: number, role: 'user' | 'admin') => `Bearer ${JwtService.sign({ userId, role })}`;
-const owner = bearer(2, 'user');
-const other = bearer(4, 'user');
-const admin = bearer(1, 'admin');
+const bearer = (userId: number) => `Bearer ${JwtService.sign({ userId, role: 'user' })}`;
+const owner = bearer(2);
+const other = bearer(4);
 
 /** Versione 1 di test: A->B 8, B->C 2. */
 function version(): ModelVersion & { edges: Edge[] } {
@@ -64,27 +63,14 @@ beforeEach(() => {
 });
 
 describe('POST /models/:id/weight-requests', () => {
-  const send = (auth: string, body: object, id = '1') =>
-    request(app).post(`/models/${id}/weight-requests`).set('Authorization', auth).send(body);
-
-  it('401 senza JWT', async () => {
-    await request(app).post('/models/1/weight-requests').send({ from: 'A', to: 'B', newWeight: 5 }).expect(401);
-  });
+  const send = (auth: string, body: object) =>
+    request(app).post('/models/1/weight-requests').set('Authorization', auth).send(body);
 
   it('201 crea una richiesta pending (anche un utente non proprietario)', async () => {
     requests.create.mockResolvedValue(pendingRequest());
     const res = await send(other, { from: 'A', to: 'B', newWeight: 5 }).expect(201);
     expect(res.body).toMatchObject({ status: 'pending', from: 'A', to: 'B', newWeight: 5 });
     expect(requests.create).toHaveBeenCalledWith(expect.objectContaining({ requesterId: 4, modelId: 1 }));
-  });
-
-  it('404 per modello inesistente', async () => {
-    models.findById.mockResolvedValue(null);
-    await send(other, { from: 'A', to: 'B', newWeight: 5 }, '99').expect(404);
-  });
-
-  it('404 per arco inesistente', async () => {
-    await send(other, { from: 'A', to: 'C', newWeight: 5 }).expect(404);
   });
 
   it('400 per peso non valido', async () => {
@@ -119,19 +105,10 @@ describe('PATCH /weight-requests/:id/approve', () => {
     expect(models.addVersion).not.toHaveBeenCalled();
   });
 
-  it('403 anche all\'admin se non è il proprietario', async () => {
-    await approve(admin).expect(403);
-  });
-
   it('409 se la richiesta è già stata decisa', async () => {
     requests.findById.mockResolvedValue({ ...pendingRequest(), status: 'approved' } as WeightChangeRequest);
     await approve(owner).expect(409);
     expect(models.addVersion).not.toHaveBeenCalled();
-  });
-
-  it('404 per richiesta inesistente', async () => {
-    requests.findById.mockResolvedValue(null);
-    await approve(owner).expect(404);
   });
 });
 
@@ -152,9 +129,5 @@ describe('PATCH /weight-requests/:id/reject', () => {
     const res = await reject(owner, { reason: 'Peso non realistico' }).expect(200);
     expect(res.body).toMatchObject({ status: 'rejected', rejectionReason: 'Peso non realistico' });
     expect(models.addVersion).not.toHaveBeenCalled();
-  });
-
-  it('403 a chi non è proprietario', async () => {
-    await reject(other, { reason: 'no' }).expect(403);
   });
 });

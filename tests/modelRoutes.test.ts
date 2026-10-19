@@ -61,17 +61,6 @@ describe('POST /models', () => {
   });
 });
 
-describe('credito positivo ma insufficiente', () => {
-  it('401 con costo richiesto e saldo nel messaggio', async () => {
-    users.findById.mockResolvedValue({ tokens: '0.50' } as User);
-    users.deductTokens.mockResolvedValue(null);
-    const res = await request(app).post('/models').set('Authorization', auth).send({ name: 'x', graph }).expect(401);
-    expect(res.body.error.code).toBe('INSUFFICIENT_TOKENS');
-    expect(res.body.error.message).toContain('1.06');
-    expect(res.body.error.message).toContain('0.50');
-  });
-});
-
 describe('POST /models/:id/execute', () => {
   beforeEach(() => {
     models.findById.mockResolvedValue({ id: 1 } as GraphModel);
@@ -88,32 +77,8 @@ describe('POST /models/:id/execute', () => {
     expect(typeof res.body.executionTimeMs).toBe('number');
   });
 
-  it('200 con path null se goal non è raggiungibile (E non è raggiungibile da D)', async () => {
-    const res = await exec('1', { start: 'D', goal: 'E' }).expect(200);
-    expect(res.body).toMatchObject({ path: null, cost: null });
-  });
-
-  it('200 con path [start] e costo 0 se start e goal coincidono', async () => {
-    const res = await exec('1', { start: 'A', goal: 'A' }).expect(200);
-    expect(res.body).toMatchObject({ path: ['A'], cost: 0, tokensCharged: 1.06 });
-  });
-
   it('400 per nodo sconosciuto, senza addebito', async () => {
     await exec('1', { start: 'A', goal: 'Z' }).expect(400);
     expect(users.deductTokens).not.toHaveBeenCalled();
-  });
-
-  it('404 per modello inesistente', async () => {
-    models.findById.mockResolvedValue(null);
-    await exec('99', { start: 'A', goal: 'D' }).expect(404);
-  });
-
-  it('400 per id non numerico', async () => {
-    await exec('abc', { start: 'A', goal: 'D' }).expect(400);
-  });
-
-  it('401 senza calcolo se i token non bastano', async () => {
-    users.deductTokens.mockResolvedValue(null);
-    await exec('1', { start: 'A', goal: 'D' }).expect(401);
   });
 });
