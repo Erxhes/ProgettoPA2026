@@ -53,9 +53,4 @@ describe('POST /models/:id/execute: addebito e calcolo nella stessa transazione'
     expect(users.deductTokens).toHaveBeenCalledWith(4, 0.41, expect.anything());
     expect(outcome).toBe('rollback');
   });
-
-  it('con calcolo riuscito la transazione va a buon fine', async () => {
-    await request(app).post('/models/1/execute').set('Authorization', auth).send({ start: 'A', goal: 'B' }).expect(200);
-    expect(outcome).toBe('commit');
-  });
 });

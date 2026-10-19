@@ -81,4 +81,13 @@ describe('POST /models/:id/execute', () => {
     await exec('1', { start: 'A', goal: 'Z' }).expect(400);
     expect(users.deductTokens).not.toHaveBeenCalled();
   });
+
+  it('404 per modello inesistente', async () => {
+    models.findById.mockResolvedValue(null);
+    await exec('99', { start: 'A', goal: 'D' }).expect(404);
+  });
+
+  it('400 per id non numerico', async () => {
+    await exec('abc', { start: 'A', goal: 'D' }).expect(400);
+  });
 });

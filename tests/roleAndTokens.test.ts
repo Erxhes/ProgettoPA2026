@@ -44,4 +44,9 @@ describe('checkTokens', () => {
     expect((err as AppError).status).toBe(401);
     expect((err as AppError).code).toBe('INSUFFICIENT_TOKENS');
   });
+
+  it('risponde 401 se l\'utente non esiste', async () => {
+    findById.mockResolvedValue(null);
+    expect(((await run(checkTokens, req)) as AppError).status).toBe(401);
+  });
 });

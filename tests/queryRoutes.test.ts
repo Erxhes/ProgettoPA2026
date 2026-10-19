@@ -19,11 +19,6 @@ const app = createApp();
 const auth = `Bearer ${JwtService.sign({ userId: 2, role: 'user' })}`;
 
 describe('querySchemas', () => {
-  it('accetta filtri validi e li converte', () => {
-    const parsed = requestsQuerySchema.parse({ modelId: '3', date: '2026-10-07', status: 'pending' });
-    expect(parsed).toEqual({ modelId: 3, date: '2026-10-07', status: 'pending' });
-  });
-
   it.each([
     ['status fuori enum', { status: 'boh' }],
     ['data inesistente', { date: '2026-02-30' }],

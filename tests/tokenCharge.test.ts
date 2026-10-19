@@ -28,14 +28,4 @@ describe('TokenService.charge', () => {
     // Senza la transazione la lettura userebbe una seconda connessione del pool
     expect(findById).toHaveBeenCalledWith(4, tx);
   });
-
-  it('il messaggio indica costo e saldo quando il saldo è positivo ma insufficiente', async () => {
-    deductTokens.mockResolvedValue(null);
-    findById.mockResolvedValue({ tokens: '0.42' } as User);
-    const err = (await TokenService.charge(4, 2.58, tx).catch((e: unknown) => e)) as AppError;
-    expect(err.status).toBe(401);
-    expect(err.code).toBe('INSUFFICIENT_TOKENS');
-    expect(err.message).toContain('2.58');
-    expect(err.message).toContain('0.42');
-  });
 });

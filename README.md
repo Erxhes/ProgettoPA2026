@@ -436,15 +436,15 @@ Per fermare tutto: `docker compose down` (aggiungi `-v` per cancellare anche i d
 
 ![Risultati test](docs/test_suites.png)
 
-Sono presenti **69 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
+Sono presenti **67 test Jest** in 17 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
 
 | Suite | Cosa verifica |
 |---|---|
-| `setup`, `validateConfig` | `GET /health`, Singleton del database, configurazione valida e chiave JWT vuota rifiutata all'avvio |
-| `authenticate`, `roleAndTokens`, `tokenCharge` | JWT valido, mancante, firmato con un'altra chiave, scaduto, HS256; ruoli; token finiti: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
+| `setup` | `GET /health` e Singleton del database |
+| `authenticate`, `roleAndTokens`, `tokenCharge` | JWT valido, mancante, firmato con un'altra chiave, scaduto, HS256, schema non Bearer; ruoli; token finiti e utente inesistente: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
 | `adminRoutes` | ricarica: 401, 403, 400, 404, 200 |
 | `modelValidation` | calcolo del costo, validazione del grafo e del nome |
-| `modelRoutes`, `executeRollback` | creazione con e senza credito, esecuzione, nodo sconosciuto, logica del rollback dell'addebito |
+| `modelRoutes`, `executeRollback` | creazione con e senza credito, esecuzione, nodo sconosciuto, id non numerico, modello inesistente, logica del rollback dell'addebito |
 | `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, alpha letto dall'ambiente all'avvio |
 | `weightRequestRoutes`, `weightRequestAtomicity` | creazione, validazione del peso, approvazione, rifiuto, 403 e 409, approvazione doppia, logica del rollback |
 | `queryRoutes`, `queryFilters` | filtri delle richieste in AND, data non valida, visibilità delle richieste, elenco delle versioni |
