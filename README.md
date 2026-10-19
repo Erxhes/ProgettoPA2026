@@ -8,7 +8,7 @@ Progetto individuale per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNI
 2. [Stack](#stack)
 3. [Rotte](#rotte)
 4. [Progettazione](#progettazione)
-5. [Decisioni di progetto](#decisioni-di-progetto)
+5. [Note](#note)
 6. [Errori](#errori)
 7. [Dati iniziali (seed)](#dati-iniziali-seed)
 8. [Avvio con docker-compose](#avvio-con-docker-compose)
