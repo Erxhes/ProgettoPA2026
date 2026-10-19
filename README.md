@@ -318,7 +318,7 @@ Solo `/admin/recharge` usa `requireRole`. Per approvare o rifiutare una richiest
   }
 ```
 
-Due cose non sono pattern ma aiutano. `asyncHandler` (`src/middleware/asyncHandler.ts`) è una piccola funzione che passa a `next()` gli errori dei gestori asincroni, così arrivano all'`errorHandler`. Le transazioni le aprono i servizi con `Database.getInstance().transaction(...)`, così le scritture vanno a buon fine tutte insieme oppure nessuna.
+Due cose utili che non sono pattern: `asyncHandler` (`src/middleware/asyncHandler.ts`) è una piccola funzione che passa a `next()` gli errori dei gestori asincroni, così arrivano all'`errorHandler`. Le transazioni le aprono i servizi con `Database.getInstance().transaction(...)`, così le scritture vanno a buon fine tutte insieme oppure nessuna.
 
 Gli errori si gestiscono solo nei middleware: controller e servizi non scrivono mai risposte di errore, lanciano un `AppError` e l'`errorHandler` lo trasforma in JSON `{ "error": { "code", "message" } }`. Gli errori imprevisti diventano un 500 generico.
 

@@ -4,7 +4,7 @@ import { env } from './config/env';
 import { validateConfig } from './config/validateConfig';
 import './models';
 
-/** Punto di ingresso: verifica la connessione al DB e avvia il server HTTP. */
+/** Punto di ingresso: controlla la configurazione, si collega al database, crea le tabelle e avvia il server HTTP. */
 async function main(): Promise<void> {
   validateConfig(env);
   await Database.getInstance().authenticate();

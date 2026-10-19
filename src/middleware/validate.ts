@@ -1,6 +1,9 @@
 import { RequestHandler } from 'express';
-import { ZodType } from 'zod';
+import { z, ZodType } from 'zod';
 import { ErrorFactory } from '../errors/ErrorFactory';
+
+// Messaggi di errore di zod in italiano, come il resto delle risposte dell'API
+z.config(z.locales.it());
 
 /** Valida un valore con uno schema zod; restituisce il dato tipizzato o solleva 400. */
 function parse(schema: ZodType, value: unknown): unknown {
