@@ -137,31 +137,22 @@ La risposta ha `results` (peso, percorso e costo per ognuno dei 21 passi), `best
 
 ![Diagramma dei casi d'uso: utente autenticato e admin con le operazioni che possono eseguire](docs/diagrammi/Casi_d_uso_sistema.png)
 
-Nel sistema ci sono due ruoli: `user` e `admin`. Il proprietario del modello non è un ruolo: è semplicemente l'utente che ha creato quel modello, e solo lui può approvare o rifiutare le richieste di cambio peso su quel modello. L'admin può fare le stesse cose di un utente e in più può ricaricare i token (`POST /admin/recharge`); paga gli stessi token e sulle richieste degli altri non può decidere.
+I ruoli sono due: `user` e `admin`. Il proprietario del modello non è un ruolo ma l'utente che ha creato quel modello, e solo lui può approvare o rifiutare le richieste su quel modello. L'admin fa le stesse cose di un utente (pagando gli stessi token) e in più ricarica i token; sulle richieste degli altri non può decidere.
 
 | Operazione | Utente | Admin | Token addebitati |
 |---|---|---|---|
-| Creare un modello | sì | sì | sì |
-| Eseguire un modello | sì | sì | sì |
-| Simulare la variazione di un peso | sì | sì | no |
-| Consultare le versioni dei pesi | sì | sì | no |
+| Creare ed eseguire un modello | sì | sì | sì |
+| Simulare, consultare versioni e richieste | sì | sì | no |
 | Chiedere il cambio di peso di un arco | sì | sì | no |
-| Consultare lo stato delle richieste | sì | sì | no |
-| Approvare o rifiutare una richiesta | solo se proprietario del modello | solo se proprietario del modello | no |
+| Approvare o rifiutare una richiesta | solo se proprietario | solo se proprietario | no |
 | Ricaricare i token di un utente | no (403) | sì | no |
-| Registrarsi | senza JWT | senza JWT | no |
-| Accedere con email e password | senza JWT | senza JWT | no |
-
-Con i token terminati ogni richiesta protetta, di qualunque ruolo, riceve 401; il login resta possibile.
+| Registrarsi e accedere | senza JWT | senza JWT | no |
 
 ### Modello dei dati
 
 ![Modello dei dati: utenti, modelli, versioni dei pesi, archi e richieste di cambio peso con le relative relazioni](docs/diagrammi/Modello_dei_dati.png)
 
-Una **versione dei pesi** è una fotografia completa del grafo: ogni approvazione crea la versione successiva copiando gli archi e
-cambiando solo il peso richiesto. Le versioni precedenti restano intatte e consultabili.
-I pesi di una richiesta *pending* non toccano il modello: l'esecuzione usa sempre la versione più recente.
-
+Una **versione dei pesi** è una copia completa del grafo: ogni approvazione crea la versione successiva copiando gli archi e cambiando solo il peso richiesto. Le versioni vecchie restano consultabili. Una richiesta *pending* non tocca il modello, e l'esecuzione usa sempre la versione più recente.
 ### Diagrammi di sequenza
 
 **Registrazione di un utente**
