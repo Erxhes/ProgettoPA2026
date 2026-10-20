@@ -21,22 +21,18 @@ export interface ExecuteModelResult {
   versionNumber: number;
   start: string;
   goal: string;
-  /** Percorso ottimo, o null se goal non è raggiungibile da start. */
+  /** Percorso ottimo, o null se goal non è raggiungibile da start */
   path: string[] | null;
-  /** Somma dei pesi lungo il percorso (non i token), null se non c'è percorso. */
+  /** Somma dei pesi lungo il percorso (non i token), null se non c'è percorso */
   cost: number | null;
   executionTimeMs: number;
   tokensCharged: number;
   remainingTokens: number;
 }
 
-/** Logica di business di creazione ed esecuzione dei modelli. */
+/** Logica di business di creazione ed esecuzione dei modelli */
 export class ModelService {
-  /**
-   * Crea un modello (versione 1) addebitando 0.20 per nodo + 0.01 per arco.
-   * Addebito e creazione stanno in un'unica transazione: senza credito non resta nulla.
-   * @throws INSUFFICIENT_TOKENS (401) se il credito non basta
-   */
+  /** Crea un modello (versione 1) addebitando 0.20 per nodo + 0.01 per arco */
   static async create(userId: number, name: string, graph: GraphInput): Promise<CreateModelResult> {
     const { nodes, edges } = graphStats(graph);
     const cost = TokenService.costFor(nodes, edges);
@@ -59,11 +55,7 @@ export class ModelService {
     });
   }
 
-  /**
-   * Esegue il modello (versione corrente dei pesi) con node-dijkstra e addebita lo stesso costo della creazione.
-   * @throws NOT_FOUND se il modello non esiste, BAD_REQUEST se start/goal non sono nodi del grafo,
-   *         INSUFFICIENT_TOKENS (401) se il credito non basta
-   */
+  /** Calcola il percorso minimo con node-dijkstra e addebita lo stesso costo della creazione */
   static async execute(userId: number, modelId: number, start: string, goal: string): Promise<ExecuteModelResult> {
     if (!(await ModelDao.findById(modelId))) throw ErrorFactory.notFound('Modello non trovato');
     const version = await ModelDao.findLatestVersion(modelId);

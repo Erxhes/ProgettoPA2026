@@ -2,21 +2,17 @@ import { DataTypes, Model, Sequelize } from 'sequelize';
 
 export type Role = 'user' | 'admin';
 
-/** Utente del sistema: ruolo e saldo di token sono salvati nel DB (non nel JWT). */
+/** Utente del sistema: ruolo e saldo di token sono salvati nel DB (non nel JWT) */
 export class User extends Model {
   declare id: number;
   declare email: string;
   declare username: string;
-  /** Password cifrata con bcrypt: non va mai restituita nelle risposte. */
+  /** Password cifrata con bcrypt: non va mai restituita nelle risposte */
   declare passwordHash: string;
   declare role: Role;
-  /** DECIMAL: Sequelize/pg lo restituisce come stringa, convertire con Number(). */
+  /** DECIMAL: Sequelize/pg lo restituisce come stringa, convertire con Number() */
   declare tokens: string;
 
-  /**
-   * Definisce la tabella `users` sull'istanza Sequelize condivisa.
-   * @param sequelize istanza ottenuta da Database.getInstance()
-   */
   static initModel(sequelize: Sequelize): void {
     User.init(
       {

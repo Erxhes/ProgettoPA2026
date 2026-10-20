@@ -1,21 +1,20 @@
 import { z } from 'zod';
 
-/** Numero massimo di passi di una simulazione. */
+/** Numero massimo di passi di una simulazione */
 export const MAX_STEPS = 1000;
-/** Tolleranza per il confronto in virgola mobile nel conteggio dei passi (es. (1.3 - 1) / 0.1 = 2.9999999999999996). */
+/** Tolleranza per il confronto in virgola mobile nel conteggio dei passi (es. (1.3 - 1) / 0.1 = 2.9999999999999996) */
 const EPSILON = 1e-9;
 
-/** Numero con al massimo 4 decimali (precisione dei pesi). */
+/** Numero con al massimo 4 decimali (precisione dei pesi) */
 const decimal4 = z
   .number()
   .refine((n) => Math.abs(Math.round(n * 1e4) / 1e4 - n) < EPSILON, 'al massimo 4 decimali');
 
-/** Numero di passi (peso iniziale incluso) da `initial` a `final` con passo `step`. */
+/** Numero di passi (peso iniziale incluso) da `initial` a `final` con passo `step` */
 export function stepCount(initial: number, final: number, step: number): number {
   return Math.floor((final - initial) / step + EPSILON) + 1;
 }
 
-/** Corpo di POST /models/:id/simulate. */
 export const simulationSchema = z
   .object({
     start: z.string().min(1).max(50),

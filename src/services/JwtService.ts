@@ -3,15 +3,15 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { Role } from '../models/User';
 
-/** Contenuto essenziale del JWT: id utente e ruolo. */
+/** Contenuto essenziale del JWT: id utente e ruolo */
 export interface JwtPayload {
   userId: number;
   role: Role;
 }
 
-/** Firma e verifica dei JWT con algoritmo RS256. */
+/** Firma e verifica dei JWT con algoritmo RS256 */
 export class JwtService {
-  /** Firma un token con la chiave privata (usato dallo script di generazione e dai test). */
+  /** Firma un token con la chiave privata (usato dallo script di generazione e dai test) */
   static sign(
     payload: JwtPayload,
     privateKey: string = env.jwtPrivateKey,
@@ -24,10 +24,7 @@ export class JwtService {
     });
   }
 
-  /**
-   * Verifica un token e ne restituisce il payload; la chiave pubblica è ricavata dalla privata.
-   * @throws errore di jsonwebtoken se il token non è valido o è scaduto
-   */
+  /** Verifica un token e ne restituisce il payload; la chiave pubblica è ricavata dalla privata */
   static verify(token: string, privateKey: string = env.jwtPrivateKey): JwtPayload {
     const publicKey = createPublicKey(privateKey);
     const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });

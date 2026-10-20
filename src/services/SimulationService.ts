@@ -4,16 +4,16 @@ import { ErrorFactory } from '../errors/ErrorFactory';
 import { SimulationInput, stepCount } from '../validators/simulationSchemas';
 import { buildAdjacency, round4 } from './graphUtils';
 
-/** Risultato del percorso minimo per un valore del peso simulato. */
+/** Risultato del percorso minimo per un valore del peso simulato */
 export interface StepResult {
   weight: number;
-  /** null se goal non è raggiungibile da start con questo peso. */
+  /** null se goal non è raggiungibile da start con questo peso */
   path: string[] | null;
   cost: number | null;
 }
 
 export interface BestResult extends StepResult {
-  /** Configurazione completa dei pesi del grafo usata per questo risultato. */
+  /** Configurazione completa dei pesi del grafo usata per questo risultato */
   weights: { from: string; to: string; weight: number }[];
 }
 
@@ -25,27 +25,20 @@ export interface SimulationResult {
   edge: { from: string; to: string };
   count: number;
   results: StepResult[];
-  /** Risultato con il costo di percorso minore (a parità, il peso più piccolo); null se mai raggiungibile. */
+  /** Risultato col costo minore (a parità il peso più piccolo), null se non c'è mai un percorso */
   best: BestResult | null;
   executionTimeMs: number;
 }
 
-/**
- * Valori del peso da simulare: initial + i * step per i = 0..n, arrotondati a 4 decimali.
- * Il peso finale è incluso se è raggiungibile con un numero intero di passi.
- */
+/** Valori del peso da simulare: initial + i * step per i = 0..n, arrotondati a 4 decimali */
 export function weightSteps(initial: number, final: number, step: number): number[] {
   const n = stepCount(initial, final, step);
   return Array.from({ length: n }, (_, i) => round4(initial + i * step));
 }
 
-/** Simulazione dell'effetto della variazione del peso di un arco sul percorso minimo. */
+/** Simulazione dell'effetto della variazione del peso di un arco sul percorso minimo */
 export class SimulationService {
-  /**
-   * Fa variare il peso di un arco sulla versione corrente del modello e calcola il percorso minimo a ogni passo.
-   * Non consuma token e non modifica il modello.
-   * @throws NOT_FOUND se il modello o l'arco non esistono, BAD_REQUEST se start/goal non sono nodi del modello
-   */
+  /** Fa variare il peso di un arco e calcola il percorso minimo a ogni passo (non costa token) */
   static async simulate(modelId: number, input: SimulationInput): Promise<SimulationResult> {
     if (!(await ModelDao.findById(modelId))) throw ErrorFactory.notFound('Modello non trovato');
     const version = await ModelDao.findLatestVersion(modelId);

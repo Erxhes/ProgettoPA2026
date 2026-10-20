@@ -5,7 +5,7 @@ import { adminRoutes } from './adminRoutes';
 import { modelRoutes } from './modelRoutes';
 import { weightRequestRoutes } from './weightRequestRoutes';
 
-/** Router principale: tutte le rotte passano da JWT e controllo dei token residui. */
+/** Router principale: tutte le rotte passano da JWT e controllo dei token residui */
 export const apiRouter = Router();
 apiRouter.use(authenticate, checkTokens);
 apiRouter.use('/admin', adminRoutes);

@@ -7,7 +7,7 @@ import { WeightChangeRequest } from '../models';
 import { round4 } from './graphUtils';
 import { dayRange, RequestsQuery } from '../validators/querySchemas';
 
-/** Rappresentazione pubblica di una richiesta di cambio peso. */
+/** Rappresentazione pubblica di una richiesta di cambio peso */
 export interface WeightRequestView {
   id: number;
   modelId: number;
@@ -45,20 +45,14 @@ function toView(r: WeightChangeRequest): WeightRequestView {
   };
 }
 
-/**
- * Media esponenziale p = alpha * p_old + (1 - alpha) * p_new, arrotondata a 4 decimali
- * (precisione della colonna del peso).
- */
+/** Media esponenziale: alpha * vecchio + (1 - alpha) * nuovo */
 export function blendWeight(oldWeight: number, newWeight: number, alpha: number = env.alpha): number {
   return round4(alpha * oldWeight + (1 - alpha) * newWeight);
 }
 
-/** Logica di business delle richieste di cambio peso. */
+/** Logica di business delle richieste di cambio peso */
 export class WeightRequestService {
-  /**
-   * Crea una richiesta in stato "pending" per un arco della versione corrente del modello.
-   * @throws NOT_FOUND se il modello o l'arco non esistono
-   */
+  /** Crea una richiesta in stato "pending" per un arco della versione corrente del modello */
   static async create(
     userId: number,
     modelId: number,
@@ -75,9 +69,7 @@ export class WeightRequestService {
     return toView(request);
   }
 
-  /**
-   * Elenca le richieste visibili all'utente (inviate da lui o sui suoi modelli) con filtri opzionali in AND.
-   */
+  /** Richieste inviate dall'utente o fatte sui suoi modelli, con i filtri */
   static async search(userId: number, filters: RequestsQuery): Promise<WeightRequestView[]> {
     const ownedModelIds = await ModelDao.findIdsByOwner(userId);
     const found = await WeightRequestDao.search({
@@ -90,11 +82,7 @@ export class WeightRequestService {
     return found.map(toView);
   }
 
-  /**
-   * Approva una richiesta (solo il proprietario del modello): aggiorna il peso con la media esponenziale
-   * e crea una nuova versione dei pesi. Tutto in una transazione, con il modello bloccato.
-   * @throws NOT_FOUND, FORBIDDEN se non è il proprietario, CONFLICT se la richiesta non è più pending
-   */
+  /** Approva una richiesta (solo il proprietario): aggiorna il peso con la media esponenziale e crea una nuova versione */
   static async approve(userId: number, requestId: number): Promise<ApproveResult> {
     const pending = await WeightRequestDao.findById(requestId);
     if (!pending) throw ErrorFactory.notFound('Richiesta non trovata');
@@ -130,10 +118,7 @@ export class WeightRequestService {
     });
   }
 
-  /**
-   * Rifiuta una richiesta con motivazione (solo il proprietario del modello).
-   * @throws NOT_FOUND, FORBIDDEN se non è il proprietario, CONFLICT se la richiesta non è più pending
-   */
+  /** Rifiuta una richiesta con motivazione (solo il proprietario del modello) */
   static async reject(userId: number, requestId: number, reason: string): Promise<WeightRequestView> {
     const pending = await WeightRequestDao.findById(requestId);
     if (!pending) throw ErrorFactory.notFound('Richiesta non trovata');

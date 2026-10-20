@@ -2,7 +2,7 @@ import { RequestHandler } from 'express';
 import { UserDao } from '../dao/UserDao';
 import { ErrorFactory } from '../errors/ErrorFactory';
 
-/** Se l'utente non esiste o ha i token terminati ogni richiesta riceve 401. Va dopo authenticate. */
+/** Se l'utente non esiste o ha i token terminati ogni richiesta riceve 401. Va dopo authenticate */
 export const checkTokens: RequestHandler = async (req, _res, next) => {
   try {
     if (!req.auth) throw ErrorFactory.unauthorized();

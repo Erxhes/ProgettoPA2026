@@ -4,7 +4,7 @@ import { notFound } from './middleware/notFound';
 import { apiRouter } from './routes';
 import { authRoutes } from './routes/authRoutes';
 
-/** Crea l'applicazione Express (separata dal listen per poterla testare). */
+/** Crea l'applicazione Express (separata dal listen per poterla testare) */
 export function createApp(): express.Express {
   const app = express();
   app.use(express.json());

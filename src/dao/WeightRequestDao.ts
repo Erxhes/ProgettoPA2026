@@ -2,9 +2,8 @@ import { Op, Transaction, WhereOptions } from 'sequelize';
 import { WeightChangeRequest } from '../models';
 import { RequestStatus } from '../models/WeightChangeRequest';
 
-/** Accesso ai dati delle richieste di cambio peso. */
 export class WeightRequestDao {
-  /** Crea una richiesta di cambio peso in stato "pending". */
+  /** Crea una richiesta di cambio peso in stato "pending" */
   static create(data: {
     modelId: number;
     requesterId: number;
@@ -15,10 +14,7 @@ export class WeightRequestDao {
     return WeightChangeRequest.create({ ...data, status: 'pending' });
   }
 
-  /**
-   * Richieste visibili all'utente (inviate da lui o su modelli di cui è proprietario),
-   * più recenti prima, con filtri opzionali in AND: modello, giorno di invio, stato.
-   */
+  /** Richieste inviate dall'utente o fatte sui suoi modelli, filtrate (in AND) per modello, giorno e stato */
   static search(filters: {
     requesterId: number;
     ownedModelIds: number[];
@@ -41,12 +37,11 @@ export class WeightRequestDao {
     });
   }
 
-  /** Cerca una richiesta; con una transazione blocca la riga (SELECT ... FOR UPDATE). */
+  /** Cerca una richiesta per id; con una transazione legge dentro di essa */
   static findById(id: number, tx?: Transaction): Promise<WeightChangeRequest | null> {
     return WeightChangeRequest.findByPk(id, tx ? { transaction: tx, lock: tx.LOCK.UPDATE } : {});
   }
 
-  /** Salva le modifiche di una richiesta già caricata. */
   static save(request: WeightChangeRequest, tx?: Transaction): Promise<WeightChangeRequest> {
     return request.save({ transaction: tx });
   }

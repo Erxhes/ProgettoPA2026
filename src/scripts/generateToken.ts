@@ -1,6 +1,6 @@
 import { JwtPayload, JwtService } from '../services/JwtService';
 
-/** Utenti del seed, con i nomi delle variabili dell'ambiente Postman. */
+/** Utenti del seed, con i nomi delle variabili dell'ambiente Postman */
 const SEED_USERS: Record<string, JwtPayload> = {
   adminToken: { userId: 1, role: 'admin' },
   ownerAnconaToken: { userId: 2, role: 'user' },
@@ -10,9 +10,8 @@ const SEED_USERS: Record<string, JwtPayload> = {
 };
 
 /**
- * Uso:
- *   npm run token -- <userId> <user|admin>   stampa un JWT RS256 firmato con JWT_PRIVATE_KEY
- *   npm run token -- all                     stampa i token di tutti gli utenti del seed (nome=token)
+ * npm run token -- <userId> <user|admin>   stampa un JWT firmato con JWT_PRIVATE_KEY
+ * npm run token -- all                     stampa i token degli utenti del seed
  */
 if (process.argv[2] === 'all') {
   for (const [name, payload] of Object.entries(SEED_USERS)) console.log(`${name}=${JwtService.sign(payload)}`);

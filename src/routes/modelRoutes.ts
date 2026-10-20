@@ -8,7 +8,7 @@ import { createModelSchema, executeModelSchema, idParamSchema } from '../validat
 import { createWeightRequestSchema } from '../validators/requestSchemas';
 import { simulationSchema } from '../validators/simulationSchemas';
 
-/** Rotte sui modelli (authenticate e checkTokens sono applicati a monte). */
+/** Rotte sui modelli (authenticate e checkTokens sono applicati a monte) */
 export const modelRoutes = Router();
 modelRoutes.post('/', validateBody(createModelSchema), asyncHandler(ModelController.create));
 modelRoutes.post(

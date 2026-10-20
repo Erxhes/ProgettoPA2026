@@ -259,7 +259,6 @@ Il progetto è organizzato in strati: le rotte (`src/routes/`) inoltrano la rich
 
 ```ts
 // src/controllers/ModelController.ts
-/** POST /models */
 export async function create(req: Request, res: Response): Promise<void> {
   const { name, graph } = req.body as { name: string; graph: GraphInput };
   res.status(201).json(await ModelService.create(userId(req), name, graph));

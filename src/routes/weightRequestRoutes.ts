@@ -6,7 +6,7 @@ import { idParamSchema } from '../validators/modelSchemas';
 import { requestsQuerySchema } from '../validators/querySchemas';
 import { rejectWeightRequestSchema } from '../validators/requestSchemas';
 
-/** Consultazione delle richieste e decisione sulle richieste di cambio peso (decide il proprietario del modello). */
+/** Consultazione delle richieste e decisione sulle richieste di cambio peso (decide il proprietario del modello) */
 export const weightRequestRoutes = Router();
 weightRequestRoutes.get('/', validateQuery(requestsQuerySchema), asyncHandler(WeightRequestController.list));
 weightRequestRoutes.patch('/:id/approve', validateParams(idParamSchema), asyncHandler(WeightRequestController.approve));

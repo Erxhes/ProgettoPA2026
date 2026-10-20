@@ -3,10 +3,10 @@ import { Database } from '../config/database';
 import { Edge, GraphModel, ModelVersion, User, WeightChangeRequest } from '../models';
 import { AuthService } from '../services/AuthService';
 
-/** Arco dei grafi iniziali: [da, a, peso]. */
+/** Arco dei grafi iniziali: [da, a, peso] */
 type EdgeDef = [string, string, number];
 
-/** Rete stradale di Ancona (minuti di percorrenza): 12 nodi, 18 archi. */
+/** Rete stradale di Ancona (minuti di percorrenza): 12 nodi, 18 archi */
 const ANCONA: EdgeDef[] = [
   ['Stazione', 'Porto', 4], ['Stazione', 'Piazza Cavour', 2], ['Porto', 'Piazza Cavour', 1],
   ['Porto', 'Piazza Roma', 5], ['Piazza Cavour', 'Piazza Roma', 8], ['Piazza Cavour', 'Archi', 10],
@@ -16,7 +16,7 @@ const ANCONA: EdgeDef[] = [
   ['Torrette', 'Tavernelle', 6], ['Montedago', 'Collemarino', 3], ['Tavernelle', 'Collemarino', 5],
 ];
 
-/** Rete ciclabile di Jesi (minuti di percorrenza): 10 nodi, 16 archi. */
+/** Rete ciclabile di Jesi (minuti di percorrenza): 10 nodi, 16 archi */
 const JESI: EdgeDef[] = [
   ['Stazione', 'Porta Valle', 3], ['Stazione', 'Viale Don Minzoni', 5],
   ['Porta Valle', 'Piazza della Repubblica', 2], ['Porta Valle', 'Teatro Pergolesi', 6],
@@ -28,12 +28,12 @@ const JESI: EdgeDef[] = [
   ['Campo Sportivo', 'Zona Industriale', 6], ['Cimitero', 'Zona Industriale', 2],
 ];
 
-/** Numero di nodi distinti toccati dagli archi. */
+/** Numero di nodi distinti toccati dagli archi */
 function countNodes(edges: EdgeDef[]): number {
   return new Set(edges.flatMap(([from, to]) => [from, to])).size;
 }
 
-/** Crea una versione con i suoi archi, nella transazione data. */
+/** Crea una versione con i suoi archi, nella transazione data */
 async function createVersion(modelId: number, versionNumber: number, edges: EdgeDef[], tx: Transaction): Promise<ModelVersion> {
   const version = await ModelVersion.create(
     { modelId, versionNumber, nodeCount: countNodes(edges), edgeCount: edges.length },
@@ -46,15 +46,12 @@ async function createVersion(modelId: number, versionNumber: number, edges: Edge
   return version;
 }
 
-/** Copia degli archi con un arco aggiornato con la media esponenziale (alpha = 0.9). */
+/** Copia degli archi con un arco aggiornato con la media esponenziale (alpha = 0.9) */
 function withUpdatedWeight(edges: EdgeDef[], from: string, to: string, newWeight: number, alpha = 0.9): EdgeDef[] {
   return edges.map(([f, t, w]): EdgeDef => (f === from && t === to ? [f, t, alpha * w + (1 - alpha) * newWeight] : [f, t, w]));
 }
 
-/**
- * Popola il database con i dati iniziali. Con `force` azzera prima le tabelle;
- * senza `force` non fa nulla se esistono già degli utenti (idempotente).
- */
+/** Popola il database con i dati iniziali */
 export async function runSeed(force: boolean): Promise<void> {
   const sequelize = Database.getInstance();
   await sequelize.sync({ force });

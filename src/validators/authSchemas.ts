@@ -2,13 +2,12 @@ import { z } from 'zod';
 
 const email = z.string().trim().toLowerCase().email();
 
-/** Password di almeno 8 caratteri e al massimo 72 byte (bcrypt ignora tutto quello che viene dopo i primi 72 byte). */
+/** Password di almeno 8 caratteri e al massimo 72 byte (bcrypt ignora tutto quello che viene dopo i primi 72 byte) */
 const password = z
   .string()
   .min(8, 'la password deve avere almeno 8 caratteri')
   .refine((p) => Buffer.byteLength(p, 'utf8') <= 72, 'la password è troppo lunga: al massimo 72 byte');
 
-/** Corpo di POST /auth/register. Campi sconosciuti (per esempio `role`) vengono rifiutati. */
 export const registerSchema = z
   .object({
     email,
@@ -20,5 +19,4 @@ export const registerSchema = z
   })
   .strict();
 
-/** Corpo di POST /auth/login. */
 export const loginSchema = z.object({ email, password: z.string().min(1) }).strict();

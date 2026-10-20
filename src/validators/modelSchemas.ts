@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-/** Grafo nel formato di node-dijkstra: nodo -> { vicino: peso }. */
+/** Grafo nel formato di node-dijkstra: nodo -> { vicino: peso } */
 export type GraphInput = Record<string, Record<string, number>>;
 
-/** Numero di nodi (chiavi) e di archi (somma dei vicini) di un grafo. */
+/** Numero di nodi (chiavi) e di archi (somma dei vicini) di un grafo */
 export function graphStats(graph: GraphInput): { nodes: number; edges: number } {
   const keys = Object.keys(graph);
   return { nodes: keys.length, edges: keys.reduce((sum, k) => sum + Object.keys(graph[k]).length, 0) };
@@ -36,17 +36,15 @@ const graphSchema = z
     }
   });
 
-/** Corpo di POST /models. */
 export const createModelSchema = z.object({
   name: z.string().trim().min(1).max(100),
   graph: graphSchema,
 });
 
-/** Corpo di POST /models/:id/execute. */
 export const executeModelSchema = z.object({
   start: z.string().min(1).max(50),
   goal: z.string().min(1).max(50),
 });
 
-/** Parametro :id (intero positivo). */
+/** Parametro :id (intero positivo) */
 export const idParamSchema = z.object({ id: z.string().regex(/^\d+$/, 'id non valido') });

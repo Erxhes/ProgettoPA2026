@@ -1,18 +1,14 @@
 import { DataTypes, Model, Sequelize } from 'sequelize';
 
-/** Arco orientato di una versione; i nodi del grafo sono ricavati dagli archi. */
+/** Arco orientato di una versione; i nodi del grafo sono ricavati dagli archi */
 export class Edge extends Model {
   declare id: number;
   declare versionId: number;
   declare fromNode: string;
   declare toNode: string;
-  /** DECIMAL: restituito come stringa, convertire con Number(). */
+  /** DECIMAL: restituito come stringa, convertire con Number() */
   declare weight: string;
 
-  /**
-   * Definisce la tabella `edges` (archi di una versione) sull'istanza Sequelize condivisa.
-   * @param sequelize istanza ottenuta da Database.getInstance()
-   */
   static initModel(sequelize: Sequelize): void {
     Edge.init(
       {

@@ -2,7 +2,7 @@ import { DataTypes, Model, Sequelize } from 'sequelize';
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
 
-/** Richiesta di cambio peso di un arco; il proprietario del modello la approva o la rifiuta. */
+/** Richiesta di cambio peso di un arco; il proprietario del modello la approva o la rifiuta */
 export class WeightChangeRequest extends Model {
   declare id: number;
   declare modelId: number;
@@ -12,15 +12,11 @@ export class WeightChangeRequest extends Model {
   declare newWeight: string;
   declare status: RequestStatus;
   declare rejectionReason: string | null;
-  /** Versione creata dall'approvazione. */
+  /** Versione creata dall'approvazione */
   declare resultingVersionId: number | null;
   declare createdAt: Date;
   declare decidedAt: Date | null;
 
-  /**
-   * Definisce la tabella `weight_change_requests` sull'istanza Sequelize condivisa.
-   * @param sequelize istanza ottenuta da Database.getInstance()
-   */
   static initModel(sequelize: Sequelize): void {
     WeightChangeRequest.init(
       {

@@ -1,7 +1,4 @@
-/**
- * Errore applicativo con status HTTP e codice stabile.
- * I controller e i middleware lo sollevano; l'error-handler centrale lo traduce in risposta.
- */
+/** Errore applicativo con status HTTP e codice stabile */
 export class AppError extends Error {
   constructor(
     public readonly status: number,
