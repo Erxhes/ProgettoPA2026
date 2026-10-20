@@ -155,71 +155,51 @@ I ruoli sono due: `user` e `admin`. Il proprietario del modello non è un ruolo 
 Una **versione dei pesi** è una copia completa del grafo: ogni approvazione crea la versione successiva copiando gli archi e cambiando solo il peso richiesto. Le versioni vecchie restano consultabili. Una richiesta *pending* non tocca il modello, e l'esecuzione usa sempre la versione più recente.
 ### Diagrammi di sequenza
 
-**Registrazione di un utente**
+Per ogni rotta ecco cosa fa e gli status che può restituire.
 
-`POST /auth/register`: crea un utente con ruolo `user` e 50 token e restituisce subito il JWT. Rotta pubblica, solo con la validazione del corpo. Successo: 201. Errori: 400 (corpo non valido, anche con campi in più come `role`), 409 (email o username già usati, anche quando due registrazioni uguali arrivano insieme).
+**Registrazione** (`POST /auth/register`): crea un utente `user` con 50 token e restituisce il JWT. Rotta pubblica. 201, oppure 400 (body non valido, anche con `role`) e 409 (email o username già usati).
 
-![Diagramma di sequenza della registrazione di un utente: validazione, controllo dei duplicati, cifratura della password, creazione e JWT](docs/diagrammi/Registrazione_di_un_utente.png)
+![Registrazione di un utente](docs/diagrammi/Registrazione_di_un_utente.png)
 
-**Login di un utente**
+**Login** (`POST /auth/login`): controlla email e password e restituisce il JWT. Non guarda i token residui. 200, oppure 400 e 401 (credenziali sbagliate, con lo stesso messaggio).
 
-`POST /auth/login`: controlla email e password e restituisce il JWT. Rotta pubblica, non controlla i token residui. Successo: 200. Errori: 400 (corpo non valido), 401 (email sconosciuta o password sbagliata, con lo stesso messaggio).
+![Login di un utente](docs/diagrammi/Login_di_un_utente.png)
 
-![Diagramma di sequenza del login: validazione, ricerca dell'utente per email, confronto della password e JWT](docs/diagrammi/Login_di_un_utente.png)
+**Creazione di un modello** (`POST /models`): addebita 0.20 token per nodo e 0.01 per arco e crea il modello, tutto in una transazione. 201, oppure 400 e 401 (JWT non valido, token terminati o insufficienti).
 
-**Creazione di un modello con addebito dei token**
+![Creazione di un modello con addebito dei token](docs/diagrammi/Creazione_di_un_modello_con_addebito_dei_token.png)
 
-`POST /models`: crea un modello da un grafo e dai suoi pesi e addebita 0.20 token per nodo e 0.01 per arco. Richiede il JWT. Successo: 201. Errori: 400 (body non valido), 401 (JWT non valido, token terminati o insufficienti).
+**Esecuzione** (`POST /models/:id/execute`): calcola il percorso minimo sulla versione più recente e addebita lo stesso costo della creazione. 200, oppure 400 (body non valido o nodo sconosciuto), 401, 404 (modello inesistente).
 
-![Diagramma di sequenza della creazione di un modello con addebito dei token, transazione e rollback per saldo insufficiente](docs/diagrammi/Creazione_di_un_modello_con_addebito_dei_token.png)
+![Esecuzione di un modello](docs/diagrammi/Esecuzione_di_un_modello.png)
 
-**Esecuzione di un modello**
+**Approvazione** (`PATCH /weight-requests/:id/approve`): il proprietario approva una richiesta *pending*, il peso si aggiorna con la media esponenziale e nasce una nuova versione. 200, oppure 401, 403 (non proprietario), 404, 409 (richiesta già decisa o arco non più presente).
 
-`POST /models/:id/execute`: calcola il percorso minimo tra `start` e `goal` sulla versione più recente dei pesi, con il costo del percorso e il tempo di esecuzione, e addebita lo stesso costo della creazione. Richiede il JWT. Successo: 200. Errori: 400 (body non valido o nodo sconosciuto), 401 (JWT non valido, token terminati o insufficienti), 404 (modello inesistente).
+![Approvazione di una richiesta di cambio peso](docs/diagrammi/Approvazione_di_una_richiesta_di_cambio_peso.png)
 
-![Diagramma di sequenza dell'esecuzione di un modello: transazione, addebito, calcolo del percorso e gestione degli errori](docs/diagrammi/Esecuzione_di_un_modello.png)
+**Simulazione** (`POST /models/:id/simulate`): fa variare il peso di un arco da un valore iniziale a uno finale con un passo, e restituisce tutti i risultati e il migliore. Non costa token e non modifica il modello. 200, oppure 400 (range, passo o nodi non validi), 401, 404.
 
-**Approvazione di una richiesta di cambio peso**
+![Simulazione del modello](docs/diagrammi/Simulazione_del_modello.png)
 
-`PATCH /weight-requests/:id/approve`: approva una richiesta *pending*, aggiorna il peso con la media esponenziale e crea una nuova versione dei pesi. Richiede il JWT e che l'utente sia il proprietario del modello. Successo: 200. Errori: 401, 403 (non proprietario), 404 (richiesta inesistente), 409 (richiesta già decisa o arco non più presente).
+**Richiesta di cambio peso e rifiuto** (`POST /models/:id/weight-requests` e `PATCH /weight-requests/:id/reject`): la richiesta nasce *pending* (201); il proprietario può rifiutarla con una motivazione obbligatoria (200). Errori: 400, 401, 403, 404, 409.
 
-![Diagramma di sequenza dell'approvazione di una richiesta di cambio peso da parte dell'utente proprietario del modello, con la nuova versione dei pesi](docs/diagrammi/Approvazione_di_una_richiesta_di_cambio_peso.png)
+![Creazione e rifiuto di una richiesta di cambio peso](docs/diagrammi/Creazione_e_rifiuto_di_una_richiesta_di_cambio_peso.png)
 
-**Simulazione della variazione di un peso**
+**Ricarica dei token** (`POST /admin/recharge`): l'admin somma un credito al saldo di un utente indicato per email. 200, oppure 400, 401, 403 (non admin), 404 (utente inesistente).
 
-`POST /models/:id/simulate`: fa variare il peso di un arco da un valore iniziale a uno finale con un dato passo e restituisce tutti i risultati e il migliore con la configurazione dei pesi. Non addebita token e non modifica il modello. Richiede il JWT. Successo: 200. Errori: 400 (range, passo o nodi non validi), 401, 404 (modello o arco inesistenti).
+![Ricarica dei token di un utente](docs/diagrammi/Ricarica_dei_token_di_un_utente.png)
 
-![Diagramma di sequenza della simulazione: nessun addebito, calcolo dei passi, percorso a ogni passo, scelta del risultato migliore e risposta](docs/diagrammi/Simulazione_del_modello.png)
+**Versioni dei pesi** (`GET /models/:id/versions`): elenca le versioni con gli archi, filtrabili per data, numero di nodi e numero di archi. 200, oppure 400, 401, 404.
 
-**Creazione di una richiesta di cambio peso e rifiuto da parte del proprietario del modello**
+![Versioni dei pesi di un modello](docs/diagrammi/Versioni_dei_pesi_di_un_modello.png)
 
-`POST /models/:id/weight-requests`: propone un nuovo peso per un arco; la richiesta nasce *pending* (successo: 201; errori: 400, 401, 404 per modello o arco inesistenti). `PATCH /weight-requests/:id/reject`: il proprietario del modello rifiuta con una motivazione obbligatoria (successo: 200; errori: 400 se manca `reason`, 401, 403 se non è proprietario, 404, 409 se già decisa). Entrambe richiedono il JWT.
+**Stato delle richieste** (`GET /weight-requests`): elenca le richieste inviate dall'utente o fatte sui suoi modelli, dalla più recente, filtrabili per modello, data e stato. 200, oppure 400 e 401.
 
-![Diagramma di sequenza della creazione di una richiesta di cambio peso in stato pending e del rifiuto con motivazione da parte del proprietario](docs/diagrammi/Creazione_e_rifiuto_di_una_richiesta_di_cambio_peso.png)
+![Stato delle richieste di cambio peso](docs/diagrammi/Stato_delle_richieste.png)
 
-**Ricarica dei token di un utente**
+**Verifica del servizio** (`GET /health`): risponde 200 se il servizio è attivo, senza JWT.
 
-`POST /admin/recharge`: l'admin somma un credito al saldo di un utente indicato per email. Richiede il JWT e il ruolo admin. Successo: 200. Errori: 400 (email o credito non validi), 401, 403 (ruolo non admin), 404 (utente inesistente).
-
-![Diagramma di sequenza della ricarica dei token da parte dell'admin, con controllo del ruolo e ricerca dell'utente per email](docs/diagrammi/Ricarica_dei_token_di_un_utente.png)
-
-**Versioni dei pesi di un modello**
-
-`GET /models/:id/versions`: elenca le versioni dei pesi di un modello con gli archi, con filtri opzionali in AND su data di modifica, numero di nodi e numero di archi. Richiede il JWT. Successo: 200. Errori: 400 (id o filtri non validi), 401, 404 (modello inesistente).
-
-![Diagramma di sequenza dell'elenco delle versioni dei pesi di un modello con i filtri opzionali](docs/diagrammi/Versioni_dei_pesi_di_un_modello.png)
-
-**Stato delle richieste di cambio peso**
-
-`GET /weight-requests`: elenca le richieste inviate dall'utente o fatte sui suoi modelli, dalla più recente, con filtri opzionali in AND su modello, data di invio e stato. Richiede il JWT. Successo: 200. Errori: 400 (filtri non validi), 401.
-
-![Diagramma di sequenza della consultazione delle richieste di cambio peso con i filtri combinabili](docs/diagrammi/Stato_delle_richieste.png)
-
-**Verifica del servizio**
-
-`GET /health`: risponde 200 se il servizio è attivo. È una rotta pubblica, senza JWT (come registrazione e login).
-
-![Diagramma di sequenza della rotta di verifica del servizio](docs/diagrammi/Verifica_del_servizio.png)
+![Verifica del servizio](docs/diagrammi/Verifica_del_servizio.png)
 
 ### Pattern usati e motivazioni
 
