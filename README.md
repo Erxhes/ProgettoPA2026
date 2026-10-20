@@ -318,47 +318,44 @@ Formato: `{ "error": { "code": "...", "message": "..." } }`.
 
 | Status | Codice | Quando |
 |---|---|---|
-| 400 | `BAD_REQUEST` | corpo, parametri o filtri non validi; JSON malformato o body troppo grande; nodo sconosciuto; range di simulazione non ammissibile |
-| 401 | `UNAUTHORIZED` | JWT assente, malformato, scaduto o con firma errata; utente inesistente; email o password del login sbagliate |
-| 401 | `INSUFFICIENT_TOKENS` | token terminati, o insufficienti a coprire il costo |
-| 403 | `FORBIDDEN` | ruolo non autorizzato (non admin) o non proprietario del modello |
-| 404 | `NOT_FOUND` | modello, arco, richiesta o utente inesistenti; rotta sconosciuta (con un JWT valido: senza JWT si ottiene 401) |
-| 409 | `CONFLICT` | richiesta di cambio peso già approvata o rifiutata; email o username già registrati |
+| 400 | `BAD_REQUEST` | body, parametri o filtri non validi; JSON malformato o troppo grande; nodo sconosciuto; range di simulazione non ammesso |
+| 401 | `UNAUTHORIZED` | JWT assente, malformato, scaduto o con firma errata; utente inesistente; credenziali del login sbagliate |
+| 401 | `INSUFFICIENT_TOKENS` | token terminati o insufficienti a coprire il costo |
+| 403 | `FORBIDDEN` | ruolo non autorizzato o non proprietario del modello |
+| 404 | `NOT_FOUND` | modello, arco, richiesta o utente inesistenti; rotta sconosciuta |
+| 409 | `CONFLICT` | richiesta già approvata o rifiutata; email o username già registrati |
 | 500 | `INTERNAL_ERROR` | errore inatteso (messaggio generico) |
 
 ## Dati iniziali (seed)
 
-Il seed gira automaticamente all'avvio del container `app` e solo se il database è vuoto, quindi è sicuro riavviare.
-Per azzerare e ripopolare:
+Il seed parte da solo all'avvio del container `app`, e solo se il database è vuoto, quindi si può riavviare senza problemi. Per azzerare e ripopolare:
 
 ```bash
 docker compose exec app npm run seed -- --force
 ```
 
-| Id | Email | Username | Password di prova | Ruolo | Token iniziali | Note |
+| Id | Email | Username | Password di prova | Ruolo | Token | Note |
 |---|---|---|---|---|---|---|
-| 1 | `chiara.ferri@example.com` | `chiara` | `Chiara2026!` | admin | 1000 | amministratore; anche l'admin è soggetto al controllo dei token |
-| 2 | `luca.bianchi@example.com` | `luca` | `Luca2026!` | user | 100 | proprietario del modello 1 (Rete stradale Ancona) |
-| 3 | `sofia.romano@example.com` | `sofia` | `Sofia2026!` | user | 100 | proprietario del modello 2 (Rete ciclabile Jesi) |
+| 1 | `chiara.ferri@example.com` | `chiara` | `Chiara2026!` | admin | 1000 | amministratore, soggetto anche lui al controllo dei token |
+| 2 | `luca.bianchi@example.com` | `luca` | `Luca2026!` | user | 100 | proprietario del modello 1 |
+| 3 | `sofia.romano@example.com` | `sofia` | `Sofia2026!` | user | 100 | proprietaria del modello 2 |
 | 4 | `andrea.conti@example.com` | `andrea` | `Andrea2026!` | user | 50 | utente generico |
-| 5 | `elena.greco@example.com` | `elena` | `Elena2026!` | user | 0 | senza token: per provare il 401 a token finiti |
+| 5 | `elena.greco@example.com` | `elena` | `Elena2026!` | user | 0 | senza token, per provare il 401 |
 
-Le password servono solo per la prova: nel database sono salvate cifrate.
+Le password servono solo per provare: nel database sono cifrate.
 
 | Modello | Proprietario | Nodi | Archi | Versioni |
 |---|---|---|---|---|
 | 1 - Rete stradale Ancona | Luca Bianchi | 12 | 18 | 2 |
 | 2 - Rete ciclabile Jesi | Sofia Romano | 10 | 16 | 2 |
 
-I nodi sono luoghi delle due città (per esempio *Stazione*, *Porto*, *Duomo*, *Passetto* ad Ancona; *Porta Valle*, *Teatro Pergolesi* a Jesi) e i pesi sono minuti di percorrenza di fantasia, scelti per avere percorsi alternativi da confrontare.
-
-Richieste iniziali: 2 approvate (che hanno generato le versioni 2), 1 *pending* (modello 1, arco da Piazza Cavour a Piazza Roma) e 1 rifiutata con motivazione.
+I nodi sono luoghi delle due città (per esempio *Stazione*, *Porto*, *Duomo* ad Ancona e *Porta Valle*, *Teatro Pergolesi* a Jesi) e i pesi sono minuti inventati, scelti per avere percorsi alternativi da confrontare. Le richieste iniziali sono 4: 2 approvate (che hanno creato le versioni 2), 1 *pending* e 1 rifiutata con motivazione.
 
 ## Avvio con docker-compose
 
-Prerequisiti: Docker con Compose v2.
+Serve Docker con Compose v2.
 
-1. Copia il file di esempio e imposta almeno `DB_PASSWORD` (il file `.env` non è tracciato da git):
+1. Copia il file di esempio e imposta almeno `DB_PASSWORD` (il file `.env` non va su git):
 
    ```bash
    cp .env.example .env
@@ -366,36 +363,28 @@ Prerequisiti: Docker con Compose v2.
 
    | Variabile | Significato |
    |---|---|
-   | `PORT` | porta esposta dall'applicazione (default 3000) |
-   | `DB_NAME`, `DB_USER`, `DB_PASSWORD` | credenziali del database; usate sia da Postgres sia dall'app (`DB_HOST` e `DB_PORT` sono impostati da compose) |
-   | `JWT_PRIVATE_KEY` | chiave privata RS256 in formato PEM su una riga, con le newline scritte come `\n` |
+   | `PORT` | porta dell'applicazione (default 3000) |
+   | `DB_NAME`, `DB_USER`, `DB_PASSWORD` | credenziali del database, usate da Postgres e dall'app |
+   | `JWT_PRIVATE_KEY` | chiave privata RS256 in PEM su una riga, con le newline scritte come `\n` |
    | `ALPHA` | coefficiente della media esponenziale, tra 0 e 1 (esclusi); se errato si usa 0.9 |
 
-2. Genera una chiave privata RS256 e incolla in `.env` la riga `JWT_PRIVATE_KEY="..."` (su una sola riga, con le newline scritte come `\n`).
-   La chiave non va mai committata. Con `openssl`:
-
-   ```bash
-   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out private.pem
-   printf 'JWT_PRIVATE_KEY="%s"\n' "$(awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' private.pem)"
-   ```
-
-   Il secondo comando stampa la riga da incollare in `.env`; poi cancella `private.pem`. In alternativa, senza `openssl`, lo script del progetto stampa la stessa riga:
+2. Genera la chiave privata e incolla in `.env` la riga `JWT_PRIVATE_KEY="..."`. Con lo script del progetto:
 
    ```bash
    docker compose run --rm --no-deps app npm run keys
    ```
 
-   Nel container i file `keys/` spariscono insieme al container (`--rm`): conta solo la riga stampata. Con Node installato in locale: `npm install && npm run keys` (qui `keys/` è una cartella ignorata da git).
+   Stampa la riga da incollare. Se hai Node in locale basta `npm install && npm run keys`. In alternativa si può usare `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048`. La chiave non va mai committata.
 
-3. Avvia tutto: il comando costruisce le immagini, avvia Postgres e l'applicazione ed esegue il seed:
+3. Avvia tutto (costruisce le immagini, avvia Postgres e l'app ed esegue il seed):
 
    ```bash
    docker compose up --build
    ```
 
-   L'API risponde su `http://localhost:3000` (`GET /health`). Il database non è esposto sull'host: resta nella rete interna di compose.
+   L'API risponde su `http://localhost:3000` (prova `GET /health`). Il database non è esposto sull'host.
 
-4. Per provare le rotte servono dei token. Li puoi ottenere con il login (`POST /auth/login`, vedi la sezione Autenticazione) oppure con lo script del progetto. I JWT generati con `npm run token` durano 1 giorno: vanno rigenerati prima di provare la collection Postman se sono scaduti. Per ottenere un token per ogni utente del seed:
+4. Per provare le rotte servono dei token. Si ottengono con `POST /auth/login` oppure con lo script, che stampa un JWT per ogni utente del seed (durano 1 giorno):
 
    ```bash
    docker compose exec app npm run token -- all
@@ -411,30 +400,28 @@ curl -s -X POST http://localhost:3000/models/1/execute \
   -d '{"start":"Stazione","goal":"Collemarino"}'
 ```
 
-Per fermare tutto: `docker compose down` (aggiungi `-v` per cancellare anche i dati del database).
-
-Se avevi già avviato una versione precedente del progetto, usa `docker compose down -v` prima di ripartire: le tabelle già create non ricevono le nuove colonne `username` e `passwordHash`.
+Per fermare tutto: `docker compose down` (con `-v` cancella anche i dati del database). Se avevi avviato una versione precedente usa `docker compose down -v` prima di ripartire, perché le tabelle già create non ricevono le colonne nuove.
 
 ## Test
 
 ![Risultati test](docs/test_suites.png)
 
-Sono presenti **73 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
+Ci sono **73 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con dei mock, quindi non serve il database; le rotte si provano sull'app Express con `supertest`, con JWT veri firmati con una chiave di prova. Le query SQL vere si provano con Postman sul database seminato.
 
 | Suite | Cosa verifica |
 |---|---|
 | `setup` | `GET /health` e Singleton del database |
-| `authenticate`, `roleAndTokens`, `tokenService` | JWT valido, mancante, firmato con un'altra chiave, scaduto, HS256, schema non Bearer; ruoli; token finiti e utente inesistente: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
+| `authenticate`, `roleAndTokens`, `tokenService` | JWT valido, mancante, con un'altra chiave, scaduto o con schema sbagliato; ruoli; token finiti: 401; addebito dei token |
 | `adminRoutes` | ricarica: 401, 403, 400, 404, 200 |
-| `modelValidation` | calcolo del costo, validazione del grafo e del nome |
-| `modelRoutes`, `modelExecute` | creazione con e senza credito, esecuzione, nodo sconosciuto, id non numerico, modello inesistente, logica del rollback dell'addebito |
-| `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, alpha letto dall'ambiente all'avvio |
-| `weightRequestRoutes`, `weightRequestApprove` | creazione, validazione del peso, approvazione, rifiuto, 403 e 409, approvazione doppia, logica del rollback |
-| `queryRoutes`, `weightRequestSearch` | filtri delle richieste in AND, data non valida, visibilità delle richieste, elenco delle versioni |
-| `simulation` | passi da 1 a 2 con passo 0.05, validazione dei range, best result e parità di costo, nessun addebito di token |
-| `errorHandler` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli |
-| `authRoutes` | registrazione (201 con 50 token, 409 se email o username sono già usati, 400 con il ruolo nel corpo) e login (200 anche a 0 token, 401 con lo stesso messaggio per password sbagliata ed email sconosciuta) |
-| `seed` | il seed gira in un'unica transazione e, con la transazione simulata, annulla tutto se un inserimento fallisce |
+| `modelValidation` | calcolo del costo e validazione del grafo |
+| `modelRoutes`, `modelExecute` | creazione con e senza credito, esecuzione, nodo sconosciuto, modello inesistente, rollback dell'addebito |
+| `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, lettura da ambiente |
+| `weightRequestRoutes`, `weightRequestApprove` | creazione, approvazione, rifiuto, 403 e 409, approvazione doppia, rollback |
+| `queryRoutes`, `weightRequestSearch` | filtri in AND, data non valida, visibilità delle richieste, elenco delle versioni |
+| `simulation` | passi da 1 a 2 con passo 0.05, range non validi, risultato migliore, nessun addebito |
+| `errorHandler` | traduzione degli errori in risposte HTTP |
+| `authRoutes` | registrazione (201, 409, 400 con `role`) e login (200, 401) |
+| `seed` | il seed gira in una sola transazione e annulla tutto se un inserimento fallisce |
 
 ```bash
 docker compose exec app npm test     # nel container
@@ -448,35 +435,33 @@ npx tsc --noEmit                     # controllo dei tipi
 
 Nella cartella `postman/` ci sono:
 
-- `grafo-pa.postman_collection.json`: 65 richieste in 6 cartelle (registrazione e login, autenticazione e ruoli, admin, modelli, versioni e simulazione, richieste di cambio peso), con script di test (137 asserzioni) che verificano status e contenuto delle risposte, compresi i casi di errore;
-- `grafo-pa.postman_environment.json`: variabile `baseUrl` e i token `adminToken`, `ownerAnconaToken`, `ownerJesiToken`, `userToken`, `noTokensToken`.
+- `grafo-pa.postman_collection.json`: 65 richieste in 6 cartelle (registrazione e login, autenticazione e ruoli, admin, modelli, versioni e simulazione, richieste di cambio peso), con test sullo status e sul contenuto delle risposte, anche per i casi di errore;
+- `grafo-pa.postman_environment.json`: la variabile `baseUrl` e i token `adminToken`, `ownerAnconaToken`, `ownerJesiToken`, `userToken`, `noTokensToken`.
 
-Procedura:
+Come usarli:
 
-1. Importa in Postman la collection e il file di ambiente e seleziona l'ambiente.
+1. Importa in Postman la collection e l'ambiente e seleziona l'ambiente.
 2. Parti da un database appena seminato: `docker compose exec app npm run seed -- --force`.
-3. Genera i token con `docker compose exec app npm run token -- all` (stampa righe `nome=token`) e incollali nelle variabili dell'ambiente. I token durano 1 giorno: rigenerali prima di ogni sessione di prova.
-4. Esegui la collection con il *Collection Runner*, **in ordine**: le richieste sono pensate per essere eseguite di seguito e si passano id creati a runtime (modello e richieste). Dopo un'esecuzione ripeti il seed prima di rilanciarla.
-
-Da riga di comando è possibile eseguire la stessa collection con `newman` (non incluso nelle dipendenze).
+3. Genera i token con `docker compose exec app npm run token -- all` (stampa righe `nome=token`) e incollali nelle variabili dell'ambiente. Durano 1 giorno, quindi rigenerali a ogni sessione.
+4. Esegui la collection con il *Collection Runner*, **in ordine**: le richieste si passano gli id creati durante l'esecuzione. Dopo ogni esecuzione ripeti il seed.
 
 ## Struttura del repository
 
 ```
 src/
-  config/        variabili d'ambiente, controllo di alpha, connessione al database (Singleton)
+  config/        variabili d'ambiente, alpha, connessione al database (Singleton)
   models/        modelli Sequelize e relazioni
   dao/           accesso ai dati
-  services/      logica di business (accesso, token, esecuzione, richieste, versioni, simulazione, JWT)
+  services/      logica di business
   controllers/   lettura della richiesta e risposta HTTP
   routes/        definizione degli endpoint
-  middleware/    JWT, token residui, ruoli, validazione, gestione errori
+  middleware/    JWT, token residui, ruoli, validazione, errori
   validators/    schemi zod
   errors/        AppError e ErrorFactory
   seeders/       script di seed
   scripts/       generazione chiavi e token
 tests/           test Jest
 postman/         collection e ambiente
-docs/            specifica del progetto, diagrammi e immagini dei test
+docs/            specifica, diagrammi e immagini dei test
 Dockerfile, docker-compose.yml, jest.config.js, tsconfig.json
 ```
