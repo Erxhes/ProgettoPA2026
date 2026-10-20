@@ -6,7 +6,7 @@ import { ErrorFactory } from '../errors/ErrorFactory';
 function fromBodyParser(err: unknown): AppError | null {
   if (typeof err !== 'object' || err === null || !('type' in err)) return null;
   if (err.type === 'entity.parse.failed') return ErrorFactory.badRequest('Body JSON non valido');
-  if (err.type === 'entity.too.large') return ErrorFactory.payloadTooLarge();
+  if (err.type === 'entity.too.large') return ErrorFactory.badRequest('Body della richiesta troppo grande');
   return null;
 }
 

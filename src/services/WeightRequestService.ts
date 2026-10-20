@@ -4,6 +4,7 @@ import { EdgeInput, ModelDao } from '../dao/ModelDao';
 import { WeightRequestDao } from '../dao/WeightRequestDao';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { WeightChangeRequest } from '../models';
+import { round4 } from './graphUtils';
 import { dayRange, RequestsQuery } from '../validators/querySchemas';
 
 /** Rappresentazione pubblica di una richiesta di cambio peso. */
@@ -49,7 +50,7 @@ function toView(r: WeightChangeRequest): WeightRequestView {
  * (precisione della colonna del peso).
  */
 export function blendWeight(oldWeight: number, newWeight: number, alpha: number = env.alpha): number {
-  return Math.round((alpha * oldWeight + (1 - alpha) * newWeight) * 1e4) / 1e4;
+  return round4(alpha * oldWeight + (1 - alpha) * newWeight);
 }
 
 /** Logica di business delle richieste di cambio peso. */

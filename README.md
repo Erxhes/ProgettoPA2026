@@ -259,11 +259,11 @@ Il progetto è organizzato in strati: le rotte (`src/routes/`) inoltrano la rich
 
 ```ts
 // src/controllers/ModelController.ts
-  /** POST /models */
-  static async create(req: Request, res: Response): Promise<void> {
-    const { name, graph } = req.body as { name: string; graph: GraphInput };
-    res.status(201).json(await ModelService.create(ModelController.userId(req), name, graph));
-  }
+/** POST /models */
+export async function create(req: Request, res: Response): Promise<void> {
+  const { name, graph } = req.body as { name: string; graph: GraphInput };
+  res.status(201).json(await ModelService.create(userId(req), name, graph));
+}
 ```
 
 #### DAO
@@ -383,13 +383,12 @@ Formato: `{ "error": { "code": "...", "message": "..." } }`.
 
 | Status | Codice | Quando |
 |---|---|---|
-| 400 | `BAD_REQUEST` | corpo, parametri o filtri non validi; JSON malformato; nodo sconosciuto; range di simulazione non ammissibile |
+| 400 | `BAD_REQUEST` | corpo, parametri o filtri non validi; JSON malformato o body troppo grande; nodo sconosciuto; range di simulazione non ammissibile |
 | 401 | `UNAUTHORIZED` | JWT assente, malformato, scaduto o con firma errata; utente inesistente; email o password del login sbagliate |
 | 401 | `INSUFFICIENT_TOKENS` | token terminati, o insufficienti a coprire il costo |
 | 403 | `FORBIDDEN` | ruolo non autorizzato (non admin) o non proprietario del modello |
 | 404 | `NOT_FOUND` | modello, arco, richiesta o utente inesistenti; rotta sconosciuta (con un JWT valido: senza JWT si ottiene 401) |
 | 409 | `CONFLICT` | richiesta di cambio peso già approvata o rifiutata; email o username già registrati |
-| 413 | `PAYLOAD_TOO_LARGE` | body della richiesta oltre il limite di 100 kb |
 | 500 | `INTERNAL_ERROR` | errore inatteso (messaggio generico) |
 
 ## Dati iniziali (seed)

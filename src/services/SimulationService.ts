@@ -2,7 +2,7 @@ import Graph from 'node-dijkstra';
 import { ModelDao } from '../dao/ModelDao';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { SimulationInput, stepCount } from '../validators/simulationSchemas';
-import { buildAdjacency } from './graphUtils';
+import { buildAdjacency, round4 } from './graphUtils';
 
 /** Risultato del percorso minimo per un valore del peso simulato. */
 export interface StepResult {
@@ -29,8 +29,6 @@ export interface SimulationResult {
   best: BestResult | null;
   executionTimeMs: number;
 }
-
-const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 
 /**
  * Valori del peso da simulare: initial + i * step per i = 0..n, arrotondati a 4 decimali.
@@ -62,7 +60,7 @@ export class SimulationService {
       if (!adjacency.has(node)) throw ErrorFactory.badRequest(`Il nodo "${node}" non esiste nel modello`);
     }
 
-    const t0 = process.hrtime.bigint();
+    const t0 = performance.now();
     const results: StepResult[] = [];
     for (const weight of weightSteps(input.initialWeight, input.finalWeight, input.step)) {
       adjacency.get(edge.from)?.set(edge.to, weight);
@@ -76,7 +74,7 @@ export class SimulationService {
         results.push({ weight, path: found.path, cost: round4(found.cost) });
       }
     }
-    const executionTimeMs = Number(process.hrtime.bigint() - t0) / 1e6;
+    const executionTimeMs = performance.now() - t0;
 
     let bestStep: StepResult | null = null;
     for (const r of results) {

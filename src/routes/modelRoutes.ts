@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { ModelController } from '../controllers/ModelController';
-import { WeightRequestController } from '../controllers/WeightRequestController';
+import * as ModelController from '../controllers/ModelController';
+import * as WeightRequestController from '../controllers/WeightRequestController';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate';
 import { versionsQuerySchema } from '../validators/querySchemas';

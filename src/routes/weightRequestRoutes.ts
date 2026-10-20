@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { WeightRequestController } from '../controllers/WeightRequestController';
+import * as WeightRequestController from '../controllers/WeightRequestController';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate';
 import { idParamSchema } from '../validators/modelSchemas';

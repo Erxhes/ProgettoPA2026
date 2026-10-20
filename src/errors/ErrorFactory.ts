@@ -24,11 +24,6 @@ export class ErrorFactory {
     return new AppError(400, 'BAD_REQUEST', message);
   }
 
-  /** 413: il body della richiesta supera il limite consentito. */
-  static payloadTooLarge(message = 'Body della richiesta troppo grande'): AppError {
-    return new AppError(413, 'PAYLOAD_TOO_LARGE', message);
-  }
-
   /** 409: l'operazione contrasta con lo stato attuale della risorsa (es. richiesta già decisa). */
   static conflict(message: string): AppError {
     return new AppError(409, 'CONFLICT', message);

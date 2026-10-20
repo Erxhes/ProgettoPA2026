@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AdminController } from '../controllers/AdminController';
+import * as AdminController from '../controllers/AdminController';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireRole } from '../middleware/requireRole';
 import { validateBody } from '../middleware/validate';

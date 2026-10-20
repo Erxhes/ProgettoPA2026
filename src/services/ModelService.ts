@@ -3,7 +3,7 @@ import { Database } from '../config/database';
 import { EdgeInput, ModelDao } from '../dao/ModelDao';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { graphStats, GraphInput } from '../validators/modelSchemas';
-import { buildAdjacency } from './graphUtils';
+import { buildAdjacency, round4 } from './graphUtils';
 import { TokenService } from './TokenService';
 
 export interface CreateModelResult {
@@ -81,16 +81,16 @@ export class ModelService {
       const remainingTokens = await TokenService.charge(userId, cost, tx);
 
       // Il cronometro include la costruzione del grafo
-      const t0 = process.hrtime.bigint();
+      const t0 = performance.now();
       const route = new Graph(adjacency);
       const result = route.path(start, goal, { cost: true });
-      const executionTimeMs = Number(process.hrtime.bigint() - t0) / 1e6;
+      const executionTimeMs = performance.now() - t0;
 
       const base = { modelId, versionNumber: version.versionNumber, start, goal, executionTimeMs, tokensCharged: cost, remainingTokens };
       // node-dijkstra restituisce path null anche per start == goal: il percorso banale è [start] a costo 0
       if (start === goal) return { ...base, path: [start], cost: 0 };
       if (Array.isArray(result) || result.path === null) return { ...base, path: null, cost: null };
-      return { ...base, path: result.path, cost: Math.round(result.cost * 1e4) / 1e4 };
+      return { ...base, path: result.path, cost: round4(result.cost) };
     });
   }
 }

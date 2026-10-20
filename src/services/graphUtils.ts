@@ -5,6 +5,9 @@ export interface WeightedEdge {
   weight: string | number;
 }
 
+/** Arrotonda a 4 decimali (precisione dei pesi e dei costi nel DB). */
+export const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
+
 /**
  * Costruisce la mappa di adiacenza accettata da node-dijkstra (nodo -> { vicino: peso }).
  * Ogni nodo che compare in un arco è presente come chiave, anche senza archi uscenti.
