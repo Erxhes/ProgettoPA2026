@@ -2,6 +2,7 @@ import { Transaction } from 'sequelize';
 import { Database } from '../config/database';
 import { Edge, GraphModel, ModelVersion, User, WeightChangeRequest } from '../models';
 import { AuthService } from '../services/AuthService';
+import { blendWeight } from '../services/WeightRequestService';
 
 /** Arco dei grafi iniziali: [da, a, peso] */
 type EdgeDef = [string, string, number];
@@ -46,9 +47,9 @@ async function createVersion(modelId: number, versionNumber: number, edges: Edge
   return version;
 }
 
-/** Copia degli archi con un arco aggiornato con la media esponenziale (alpha = 0.9) */
-function withUpdatedWeight(edges: EdgeDef[], from: string, to: string, newWeight: number, alpha = 0.9): EdgeDef[] {
-  return edges.map(([f, t, w]): EdgeDef => (f === from && t === to ? [f, t, alpha * w + (1 - alpha) * newWeight] : [f, t, w]));
+/** Copia degli archi con un arco aggiornato con la media esponenziale, con lo stesso alpha dell'approvazione */
+function withUpdatedWeight(edges: EdgeDef[], from: string, to: string, newWeight: number): EdgeDef[] {
+  return edges.map(([f, t, w]): EdgeDef => (f === from && t === to ? [f, t, blendWeight(w, newWeight)] : [f, t, w]));
 }
 
 /** Popola il database con i dati iniziali */
