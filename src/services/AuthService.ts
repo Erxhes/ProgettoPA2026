@@ -33,6 +33,7 @@ export class AuthService {
 
   /** Registra un nuovo utente (ruolo `user`, 50 token) e restituisce subito un JWT */
   static async register(email: string, username: string, password: string): Promise<AuthResult> {
+    // controllo prima email e username, così rispondo 409 con un messaggio chiaro
     if (await UserDao.findByEmail(email)) throw ErrorFactory.conflict('Email già registrata');
     if (await UserDao.findByUsername(username)) throw ErrorFactory.conflict('Username già in uso');
     const passwordHash = await AuthService.hashPassword(password);
@@ -42,6 +43,7 @@ export class AuthService {
   /** Controlla email e password e restituisce un JWT */
   static async login(email: string, password: string): Promise<AuthResult> {
     const user = await UserDao.findByEmail(email);
+    // stesso errore per email sbagliata e password sbagliata, così non si capisce quale utente esiste
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw ErrorFactory.unauthorized('Credenziali non valide');
     }

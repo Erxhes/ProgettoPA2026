@@ -16,6 +16,7 @@ export function createApp(): express.Express {
   // Rotte pubbliche di registrazione e login: stanno prima di apiRouter, che richiede il JWT
   app.use('/auth', authRoutes);
 
+  // da qui in poi tutte le rotte richiedono il JWT
   app.use(apiRouter);
   app.use(notFound);
   app.use(errorHandler);

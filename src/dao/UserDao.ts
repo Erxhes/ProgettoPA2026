@@ -32,6 +32,7 @@ export class UserDao {
 
   /** Toglie `amount` dal saldo solo se basta, con una UPDATE sola; restituisce il saldo rimasto o null */
   static async deductTokens(userId: number, amount: number, tx?: Transaction): Promise<number | null> {
+    // la condizione tokens >= amount nella UPDATE evita che due richieste insieme portino il saldo sotto zero
     const [rows] = await Database.getInstance().query(
       'UPDATE users SET tokens = tokens - :amount WHERE id = :id AND tokens >= :amount RETURNING tokens',
       { replacements: { amount: amount.toFixed(2), id: userId }, transaction: tx },

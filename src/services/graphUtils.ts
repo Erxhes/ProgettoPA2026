@@ -12,6 +12,7 @@ export const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 export function buildAdjacency(edges: WeightedEdge[]): Map<string, Map<string, number>> {
   const adjacency = new Map<string, Map<string, number>>();
   for (const e of edges) {
+    // aggiungo entrambi i nodi anche se uno non ha archi uscenti
     if (!adjacency.has(e.fromNode)) adjacency.set(e.fromNode, new Map());
     if (!adjacency.has(e.toNode)) adjacency.set(e.toNode, new Map());
     adjacency.get(e.fromNode)?.set(e.toNode, Number(e.weight));

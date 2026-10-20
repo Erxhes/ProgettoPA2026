@@ -6,11 +6,13 @@ import { ErrorFactory } from '../errors/ErrorFactory';
 export class TokenService {
   /** Costo in token di un modello: 0.20 per nodo + 0.01 per arco */
   static costFor(nodes: number, edges: number): number {
+    // calcolo in centesimi interi per evitare errori di virgola mobile (0.2 * 3 non fa 0.6)
     return (nodes * 20 + edges) / 100;
   }
 
   /** Addebita `cost` token all'utente in modo atomico e restituisce il saldo residuo */
   static async charge(userId: number, cost: number, tx?: Transaction): Promise<number> {
+    // il DAO toglie i token solo se bastano, restituisce null se il saldo è troppo basso
     const remaining = await UserDao.deductTokens(userId, cost, tx);
     if (remaining === null) {
       // Si legge nella stessa transazione, per non aprire una seconda connessione dal pool

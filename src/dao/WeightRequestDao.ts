@@ -23,6 +23,7 @@ export class WeightRequestDao {
     status?: RequestStatus;
     day?: { start: Date; end: Date };
   }): Promise<WeightChangeRequest[]> {
+    // il filtro sull'utente c'è sempre, gli altri si aggiungono solo se sono stati passati
     const conditions: WhereOptions[] = [
       { [Op.or]: [{ requesterId: filters.requesterId }, { modelId: { [Op.in]: filters.ownedModelIds } }] },
     ];
@@ -38,7 +39,7 @@ export class WeightRequestDao {
     });
   }
 
-  /** Cerca una richiesta per id; con una transazione legge dentro di essa */
+  /** Cerca una richiesta per id; dentro una transazione ne blocca la riga */
   static findById(id: number, tx?: Transaction): Promise<WeightChangeRequest | null> {
     return WeightChangeRequest.findByPk(id, tx ? { transaction: tx, lock: tx.LOCK.UPDATE } : {});
   }

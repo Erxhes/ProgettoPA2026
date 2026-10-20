@@ -61,6 +61,7 @@ export class WeightRequestService {
     newWeight: number,
   ): Promise<WeightRequestView> {
     if (!(await ModelDao.findById(modelId))) throw ErrorFactory.notFound('Modello non trovato');
+    // l'arco deve esistere nella versione più recente
     const version = await ModelDao.findLatestVersion(modelId);
     if (!version || !version.edges.some((e) => e.fromNode === from && e.toNode === to)) {
       throw ErrorFactory.notFound(`Arco ${from}->${to} non presente nel modello`);
@@ -71,6 +72,7 @@ export class WeightRequestService {
 
   /** Richieste inviate dall'utente o fatte sui suoi modelli, con i filtri */
   static async search(userId: number, filters: RequestsQuery): Promise<WeightRequestView[]> {
+    // prima prendo i modelli dell'utente, perché vede anche le richieste fatte su quelli
     const ownedModelIds = await ModelDao.findIdsByOwner(userId);
     const found = await WeightRequestDao.search({
       requesterId: userId,
@@ -87,11 +89,13 @@ export class WeightRequestService {
     const pending = await WeightRequestDao.findById(requestId);
     if (!pending) throw ErrorFactory.notFound('Richiesta non trovata');
 
+    // transazione con il modello bloccato: due approvazioni insieme non possono usare lo stesso peso vecchio
     return Database.getInstance().transaction(async (tx) => {
       const model = await ModelDao.lockById(pending.modelId, tx);
       if (!model) throw ErrorFactory.notFound('Modello non trovato');
       if (model.ownerId !== userId) throw ErrorFactory.forbidden('Solo il proprietario del modello può decidere');
 
+      // rileggo la richiesta dentro la transazione: nel frattempo potrebbe essere stata decisa
       const request = await WeightRequestDao.findById(requestId, tx);
       if (!request) throw ErrorFactory.notFound('Richiesta non trovata');
       if (request.status !== 'pending') throw ErrorFactory.conflict('La richiesta è già stata decisa');
@@ -100,6 +104,7 @@ export class WeightRequestService {
       const target = current?.edges.find((e) => e.fromNode === request.fromNode && e.toNode === request.toNode);
       if (!current || !target) throw ErrorFactory.conflict('L\'arco della richiesta non esiste più nel modello');
 
+      // la nuova versione è una copia degli archi con solo questo peso cambiato
       const oldWeight = Number(target.weight);
       const updatedWeight = blendWeight(oldWeight, Number(request.newWeight));
       const edges: EdgeInput[] = current.edges.map((e): EdgeInput => [
@@ -126,6 +131,7 @@ export class WeightRequestService {
     if (!model) throw ErrorFactory.notFound('Modello non trovato');
     if (model.ownerId !== userId) throw ErrorFactory.forbidden('Solo il proprietario del modello può decidere');
 
+    // anche qui rileggo la richiesta nella transazione, per non rifiutarne una già approvata
     return Database.getInstance().transaction(async (tx) => {
       const request = await WeightRequestDao.findById(requestId, tx);
       if (!request) throw ErrorFactory.notFound('Richiesta non trovata');

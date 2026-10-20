@@ -53,6 +53,7 @@ export class SimulationService {
       if (!adjacency.has(node)) throw ErrorFactory.badRequest(`Il nodo "${node}" non esiste nel modello`);
     }
 
+    // per ogni valore del peso rifaccio il percorso minimo sul grafo con quell'arco cambiato
     const t0 = performance.now();
     const results: StepResult[] = [];
     for (const weight of weightSteps(input.initialWeight, input.finalWeight, input.step)) {
@@ -69,10 +70,12 @@ export class SimulationService {
     }
     const executionTimeMs = performance.now() - t0;
 
+    // il migliore è quello col costo più basso; a parità resta il primo, cioè il peso più piccolo
     let bestStep: StepResult | null = null;
     for (const r of results) {
       if (r.cost !== null && (bestStep === null || r.cost < (bestStep.cost as number))) bestStep = r;
     }
+    // per il migliore ricostruisco anche tutti i pesi del grafo
     const best: BestResult | null = bestStep && {
       ...bestStep,
       weights: version.edges.map((e) => ({

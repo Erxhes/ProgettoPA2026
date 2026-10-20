@@ -36,10 +36,12 @@ export class ModelService {
   static async create(userId: number, name: string, graph: GraphInput): Promise<CreateModelResult> {
     const { nodes, edges } = graphStats(graph);
     const cost = TokenService.costFor(nodes, edges);
+    // trasformo il grafo { nodo: { vicino: peso } } in una lista di archi [da, a, peso]
     const edgeList: EdgeInput[] = Object.entries(graph).flatMap(([from, neighbors]) =>
       Object.entries(neighbors).map(([to, weight]): EdgeInput => [from, to, weight]),
     );
 
+    // addebito e creazione nella stessa transazione: se i token non bastano non viene creato nulla
     return Database.getInstance().transaction(async (tx) => {
       const remainingTokens = await TokenService.charge(userId, cost, tx);
       const { model, version } = await ModelDao.createWithFirstVersion(userId, name, nodes, edgeList, tx);
@@ -62,6 +64,7 @@ export class ModelService {
     if (!version) throw ErrorFactory.notFound('Il modello non ha versioni');
 
     const adjacency = buildAdjacency(version.edges);
+    // start e goal devono essere nodi del grafo
     for (const node of [start, goal]) {
       if (!adjacency.has(node)) throw ErrorFactory.badRequest(`Il nodo "${node}" non esiste nel modello`);
     }

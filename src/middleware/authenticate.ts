@@ -10,6 +10,7 @@ export const authenticate: RequestHandler = (req, _res, next) => {
     return;
   }
   try {
+    // se il token è valido salvo id e ruolo in req.auth per i middleware dopo
     req.auth = JwtService.verify(header.slice('Bearer '.length));
     next();
   } catch {

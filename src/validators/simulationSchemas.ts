@@ -12,6 +12,7 @@ const decimal4 = z
 
 /** Numero di passi (peso iniziale incluso) da `initial` a `final` con passo `step` */
 export function stepCount(initial: number, final: number, step: number): number {
+  // + 1 perché il peso iniziale conta come primo passo
   return Math.floor((final - initial) / step + EPSILON) + 1;
 }
 
@@ -26,6 +27,7 @@ export const simulationSchema = z
     step: decimal4.pipe(z.number().positive('il passo deve essere maggiore di 0')),
   })
   .superRefine((s, ctx) => {
+    // controlli sul range: iniziale <= finale, passo non più grande dell'intervallo, non troppi passi
     if (s.initialWeight > s.finalWeight) {
       ctx.addIssue({ code: 'custom', path: ['finalWeight'], message: 'il peso finale deve essere >= del peso iniziale' });
       return;

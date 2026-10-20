@@ -12,11 +12,13 @@ function fromBodyParser(err: unknown): AppError | null {
 
 /** Error-handler centrale: traduce gli errori sollevati nei controller e nei middleware in risposte HTTP */
 export const errorHandler: ErrorRequestHandler = (err: unknown, _req, res, _next) => {
+  // gli errori nostri hanno già status e codice, quelli del body-parser si convertono
   const appError = err instanceof AppError ? err : fromBodyParser(err);
   if (appError) {
     res.status(appError.status).json({ error: { code: appError.code, message: appError.message } });
     return;
   }
+  // qualsiasi altro errore è un bug: lo scrivo nel log e rispondo 500 senza dettagli
   console.error(err);
   res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Errore interno del server' } });
 };

@@ -17,6 +17,7 @@ export class JwtService {
     privateKey: string = env.jwtPrivateKey,
     expiresIn: jwt.SignOptions['expiresIn'] = '1d',
   ): string {
+    // nel token metto solo il ruolo, l'id utente va nel campo standard `sub`
     return jwt.sign({ role: payload.role }, privateKey, {
       algorithm: 'RS256',
       subject: String(payload.userId),
@@ -26,9 +27,11 @@ export class JwtService {
 
   /** Verifica un token e ne restituisce il payload; la chiave pubblica è ricavata dalla privata */
   static verify(token: string, privateKey: string = env.jwtPrivateKey): JwtPayload {
+    // la chiave pubblica si ricava dalla privata, così in .env ne basta una
     const publicKey = createPublicKey(privateKey);
     const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
     if (typeof decoded === 'string') throw new Error('Payload non valido');
+    // controllo che id e ruolo siano quelli attesi, anche se la firma è valida
     const userId = Number(decoded.sub);
     const role = decoded.role;
     if (!Number.isInteger(userId) || (role !== 'user' && role !== 'admin')) throw new Error('Payload non valido');

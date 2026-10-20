@@ -57,6 +57,7 @@ export class ModelDao {
     modelId: number,
     filters: { day?: { start: Date; end: Date }; nodes?: number; edges?: number },
   ): Promise<VersionWithEdges[]> {
+    // parto dal modello e aggiungo i filtri solo se ci sono
     const where: WhereOptions = { modelId };
     const conditions: WhereOptions[] = [where];
     if (filters.day) conditions.push({ createdAt: { [Op.gte]: filters.day.start, [Op.lt]: filters.day.end } });
