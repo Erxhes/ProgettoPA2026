@@ -19,7 +19,7 @@ Progetto per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNIVPM).
 
 Il progetto è un back-end REST per creare, eseguire e valutare modelli di ottimizzazione su grafo. Un modello è un grafo con dei pesi sugli archi, e il percorso di costo minimo si calcola con [`node-dijkstra`](https://www.npmjs.com/package/node-dijkstra).
 
-Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo peso per un arco (per esempio i minuti per percorrere un tratto di strada) e il proprietario del modello decide se accettarlo. Se la proposta è approvata il peso si aggiorna con una media esponenziale e nasce una nuova **versione dei pesi**.
+Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo peso per un arco (per esempio i minuti per percorrere un tratto di strada) e il proprietario del modello decide se accettarlo. Se la proposta è approvata il peso si aggiorna con una media esponenziale e nasce una nuova versione dei pesi.
 
 Cosa si può fare:
 
@@ -49,7 +49,7 @@ Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`
 
 ## Rotte
 
-Tutte le rotte, tranne le tre pubbliche, richiedono l'header `Authorization: Bearer <JWT>`. Se l'utente ha finito i token ogni richiesta restituisce **401**.
+Le rotte non pubbliche vogliono l'header `Authorization: Bearer <JWT>`. A token finiti rispondono tutte 401.
 
 | Metodo e percorso | Chi può chiamarla | Descrizione |
 |---|---|---|
@@ -80,7 +80,7 @@ Il JWT contiene solo l'essenziale e dura 1 giorno: `sub` è l'id utente e `role`
 
 ### Formato del grafo
 
-Il grafo segue l'interfaccia di `node-dijkstra`: le chiavi sono i nodi e i valori sono i vicini con il peso. È orientato, e ogni vicino deve comparire anche come chiave (anche con `{}`), così il numero di nodi è chiaro.
+Il grafo segue l'interfaccia di `node-dijkstra`: le chiavi sono i nodi e i valori sono i vicini con il peso. È orientato, e ogni vicino deve comparire anche come chiave (anche con `{}`), altrimenti i nodi non si contano bene.
 
 ```json
 {
@@ -94,7 +94,7 @@ Il grafo segue l'interfaccia di `node-dijkstra`: le chiavi sono i nodi e i valor
 }
 ```
 
-Regole: pesi maggiori di 0 e minori di 1000000, al massimo 4 decimali; nessun arco da un nodo a se stesso; almeno un arco; ogni nodo deve avere almeno un arco (i nodi della versione si ricavano dagli archi, quindi un nodo isolato andrebbe perso).
+Regole: pesi maggiori di 0 e minori di 1000000, al massimo 4 decimali; nessun arco da un nodo a se stesso; almeno un arco; ogni nodo deve avere almeno un arco, perché i nodi di una versione si ricavano dagli archi e un nodo isolato andrebbe perso.
 
 ### Esempi di risposta
 
@@ -153,9 +153,9 @@ I ruoli sono due: `user` e `admin`. Il proprietario del modello non è un ruolo 
 ![Modello dei dati: utenti, modelli, versioni dei pesi, archi e richieste di cambio peso con le relative relazioni](docs/diagrammi/Modello_dei_dati.png)
 
 Una **versione dei pesi** è una copia completa del grafo: ogni approvazione crea la versione successiva copiando gli archi e cambiando solo il peso richiesto. Le versioni vecchie restano consultabili. Una richiesta *pending* non tocca il modello, e l'esecuzione usa sempre la versione più recente.
+
 ### Diagrammi di sequenza
 
-Per ogni rotta ecco cosa fa e gli status che può restituire.
 
 **Registrazione** (`POST /auth/register`): crea un utente `user` con 50 token e restituisce il JWT. Rotta pubblica. 201, oppure 400 (body non valido, anche con `role`) e 409 (email o username già usati).
 
@@ -207,7 +207,7 @@ La specifica non dice quali pattern usare, ma chiede di documentarli e motivarli
 
 #### MVC con Service Layer
 
-Le rotte (`src/routes/`) passano la richiesta al controller (`src/controllers/`), che legge i dati già validati, chiama un servizio (`src/services/`) e scrive la risposta JSON, che fa da "view". Le regole di business (costi, media esponenziale, versioni, simulazione) stanno nei servizi, così i controller restano corti e le regole si provano senza HTTP, come fa `tests/alphaAndBlend.test.ts` con `blendWeight`.
+Le rotte (`src/routes/`) passano la richiesta al controller (`src/controllers/`), che legge i dati già validati, chiama un servizio (`src/services/`) e scrive la risposta JSON, che fa da "view". Costi, media esponenziale, versioni e simulazione stanno nei servizi. I controller restano corti e le regole si provano senza HTTP: `tests/alphaAndBlend.test.ts` lo fa con `blendWeight`.
 
 ```ts
 // src/controllers/ModelController.ts
@@ -219,7 +219,9 @@ export async function create(req: Request, res: Response): Promise<void> {
 
 #### DAO
 
-Le query al database stanno nelle classi di `src/dao/` (`UserDao`, `ModelDao`, `WeightRequestDao`) e non nei servizi. Qui ci sono anche le operazioni delicate: l'addebito dei token è una sola `UPDATE ... WHERE tokens >= :amount`, che impedisce a due richieste insieme di portare il saldo sotto zero, e il `SELECT ... FOR UPDATE` fa passare le approvazioni sullo stesso modello una alla volta. Nei test i DAO sono sostituiti da mock, quindi non serve il database. Le transazioni le aprono i servizi e le passano ai DAO.
+Le query al database stanno nelle classi di `src/dao/` (`UserDao`, `ModelDao`, `WeightRequestDao`) e non nei servizi. Qui stanno anche le operazioni delicate. L'addebito dei token è una sola `UPDATE ... WHERE tokens >= :amount`: due richieste contemporanee non possono portare il saldo sotto zero. Il `SELECT ... FOR UPDATE` fa passare una alla volta le approvazioni sullo stesso modello.
+
+Le transazioni le aprono i servizi e le passano ai DAO. Nei test i DAO sono mock, quindi il database non serve.
 
 ```ts
 // src/dao/UserDao.ts
@@ -235,7 +237,14 @@ static async deductTokens(userId: number, amount: number, tx?: Transaction): Pro
 
 #### Chain of Responsibility (la catena dei middleware di Express)
 
-I controlli sulla richiesta sono middleware (`src/middleware/`) in catena: ognuno fa un solo controllo e passa al successivo con `next()`, oppure si ferma con `next(err)`. `authenticate` verifica il JWT, `checkTokens` controlla che l'utente abbia ancora token, `requireRole` limita la rotta a un ruolo, `validateBody`, `validateParams` e `validateQuery` validano i dati. `authenticate` e `checkTokens` sono messi una volta sola sul router principale e ogni rotta aggiunge i controlli che le servono (solo la ricarica usa `requireRole('admin')`). L'ordine conta: `checkTokens` viene dopo `authenticate` perché serve sapere chi è l'utente, quindi a token finiti anche l'admin riceve 401.
+I controlli sulla richiesta sono middleware (`src/middleware/`) messi in catena. Ognuno fa un solo controllo e passa al successivo con `next()`, oppure si ferma con `next(err)`:
+
+- `authenticate` verifica il JWT;
+- `checkTokens` controlla che l'utente abbia ancora token;
+- `requireRole` limita la rotta a un ruolo;
+- `validateBody`, `validateParams` e `validateQuery` validano i dati.
+
+`authenticate` e `checkTokens` sono sul router principale, una volta sola. Ogni rotta aggiunge poi i suoi controlli (solo la ricarica usa `requireRole('admin')`). L'ordine conta: `checkTokens` ha bisogno di sapere chi è l'utente, quindi viene dopo `authenticate`. A token finiti anche l'admin riceve 401.
 
 ```ts
 // src/routes/index.ts
@@ -248,7 +257,7 @@ apiRouter.use('/admin', adminRoutes);
 adminRoutes.post('/recharge', requireRole('admin'), validateBody(rechargeSchema), asyncHandler(AdminController.recharge));
 ```
 
-Catena di ogni rotta, in ordine, prima del controller:
+Controlli di ogni rotta, nell'ordine in cui girano:
 
 | Rotta | Catena |
 |---|---|
@@ -261,11 +270,13 @@ Catena di ogni rotta, in ordine, prima del controller:
 | `PATCH /weight-requests/:id/approve` | `authenticate`, `checkTokens`, validazione `:id` |
 | `PATCH /weight-requests/:id/reject` | `authenticate`, `checkTokens`, validazione `:id`, validazione body |
 
-Per approvare o rifiutare non basta un ruolo: bisogna essere il proprietario del modello, e questo lo controlla il servizio. In fondo alla catena ci sono `notFound` e `errorHandler`.
+Approvare o rifiutare richiede di essere il proprietario del modello, non un ruolo: lo controlla il servizio. In fondo alla catena stanno `notFound` e `errorHandler`.
 
 #### Factory
 
-`ErrorFactory` (`src/errors/ErrorFactory.ts`) crea gli errori con metodi statici (`unauthorized`, `forbidden`, `badRequest`, `notFound`, `conflict`, `insufficientTokens`): ognuno restituisce un `AppError` con status, codice e messaggio. Così ogni errore è definito in un solo posto, e per esempio `checkTokens` e `TokenService.charge` danno lo stesso 401 `INSUFFICIENT_TOKENS`. Servizi e middleware sollevano l'errore, e l'`errorHandler` risponde con il suo status e il suo codice.
+`ErrorFactory` (`src/errors/ErrorFactory.ts`) crea gli errori con metodi statici (`unauthorized`, `forbidden`, `badRequest`, `notFound`, `conflict`, `insufficientTokens`): ognuno restituisce un `AppError` con status, codice e messaggio. Ogni errore è definito in un solo posto: `checkTokens` e `TokenService.charge`, per esempio, danno lo stesso 401 `INSUFFICIENT_TOKENS`.
+
+Gli errori si gestiscono solo nei middleware. Servizi e controller lanciano un `AppError` e l'`errorHandler` lo trasforma in JSON con il suo status e il suo codice. `asyncHandler` inoltra a `next()` gli errori delle funzioni asincrone, e quelli imprevisti diventano un 500 generico.
 
 ```ts
 // src/errors/ErrorFactory.ts
@@ -285,7 +296,7 @@ if (appError) {
 
 #### Singleton
 
-`Database` (`src/config/database.ts`) tiene una sola istanza di Sequelize per tutto il processo. Il costruttore è privato, quindi l'istanza si ottiene solo con `Database.getInstance()`, che la crea la prima volta e poi la restituisce sempre uguale. Serve a condividere un solo pool di connessioni tra DAO e servizi senza passarlo come parametro; `tests/setup.test.ts` controlla che due chiamate diano lo stesso oggetto.
+`Database` (`src/config/database.ts`) tiene una sola istanza di Sequelize per tutto il processo. Il costruttore è privato, quindi l'istanza si ottiene solo con `Database.getInstance()`, che la crea la prima volta e poi la restituisce sempre uguale. Il pool di connessioni è uno solo e DAO e servizi lo usano senza passarselo come parametro. `tests/setup.test.ts` controlla che due chiamate diano lo stesso oggetto.
 
 ```ts
 // src/config/database.ts
@@ -301,8 +312,6 @@ static getInstance(): Sequelize {
   return Database.instance;
 }
 ```
-
-Gli errori si gestiscono solo nei middleware: controller e servizi lanciano un `AppError` e l'`errorHandler` lo trasforma in JSON. `asyncHandler` passa a `next()` gli errori delle funzioni asincrone, così arrivano all'`errorHandler`. Gli errori imprevisti diventano un 500 generico.
 
 #### Altre scelte
 
@@ -406,7 +415,7 @@ Per fermare tutto: `docker compose down` (con `-v` cancella anche i dati del dat
 
 ![Risultati test](docs/test_suites.png)
 
-Ci sono **73 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con dei mock, quindi non serve il database; le rotte si provano sull'app Express con `supertest`, con JWT veri firmati con una chiave di prova. Le query SQL vere si provano con Postman sul database seminato.
+Ci sono 73 test Jest in 18 suite (`tests/`). I DAO e la transazione sono mock, quindi il database non serve; le rotte si provano sull'app Express con `supertest`, con JWT veri firmati con una chiave di prova. Le query SQL vere si provano con Postman sul database seminato.
 
 | Suite | Cosa verifica |
 |---|---|
