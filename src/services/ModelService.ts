@@ -103,9 +103,9 @@ export class ModelService {
 
   /** Calcola il percorso minimo con node-dijkstra e addebita lo stesso costo della creazione */
   static async execute(userId: number, modelId: number, start: string, goal: string): Promise<ExecuteModelResult> {
-    if (!(await ModelDao.findById(modelId))) throw ErrorFactory.notFound('Modello non trovato');
+    // ogni modello ha almeno la versione 1: se manca, il modello non esiste
     const version = await ModelDao.findLatestVersion(modelId);
-    if (!version) throw ErrorFactory.notFound('Il modello non ha versioni');
+    if (!version) throw ErrorFactory.notFound('Modello non trovato');
 
     const adjacency = buildAdjacency(version.edges);
     // start e goal devono essere nodi del grafo
@@ -135,9 +135,9 @@ export class ModelService {
 
   /** Fa variare il peso di un arco e calcola il percorso minimo a ogni passo (non costa token) */
   static async simulate(modelId: number, input: SimulationInput): Promise<SimulationResult> {
-    if (!(await ModelDao.findById(modelId))) throw ErrorFactory.notFound('Modello non trovato');
+    // ogni modello ha almeno la versione 1: se manca, il modello non esiste
     const version = await ModelDao.findLatestVersion(modelId);
-    if (!version) throw ErrorFactory.notFound('Il modello non ha versioni');
+    if (!version) throw ErrorFactory.notFound('Modello non trovato');
 
     const { start, goal, edge } = input;
     const adjacency = buildAdjacency(version.edges);

@@ -60,10 +60,10 @@ export class WeightRequestService {
     to: string,
     newWeight: number,
   ): Promise<WeightRequestView> {
-    if (!(await ModelDao.findById(modelId))) throw ErrorFactory.notFound('Modello non trovato');
     // l'arco deve esistere nella versione più recente
     const version = await ModelDao.findLatestVersion(modelId);
-    if (!version || !version.edges.some((e) => e.fromNode === from && e.toNode === to)) {
+    if (!version) throw ErrorFactory.notFound('Modello non trovato');
+    if (!version.edges.some((e) => e.fromNode === from && e.toNode === to)) {
       throw ErrorFactory.notFound(`Arco ${from}->${to} non presente nel modello`);
     }
     const request = await WeightRequestDao.create({ modelId, requesterId: userId, fromNode: from, toNode: to, newWeight });

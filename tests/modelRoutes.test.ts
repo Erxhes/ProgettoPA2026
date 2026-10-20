@@ -83,7 +83,7 @@ describe('POST /models/:id/execute', () => {
   });
 
   it('404 per modello inesistente', async () => {
-    models.findById.mockResolvedValue(null);
+    models.findLatestVersion.mockResolvedValue(null);
     await exec('99', { start: 'A', goal: 'D' }).expect(404);
   });
 

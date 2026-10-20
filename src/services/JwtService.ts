@@ -29,12 +29,7 @@ export class JwtService {
   static verify(token: string, privateKey: string = env.jwtPrivateKey): JwtPayload {
     // la chiave pubblica si ricava dalla privata, così in .env ne basta una
     const publicKey = createPublicKey(privateKey);
-    const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
-    if (typeof decoded === 'string') throw new Error('Payload non valido');
-    // controllo che id e ruolo siano quelli attesi, anche se la firma è valida
-    const userId = Number(decoded.sub);
-    const role = decoded.role;
-    if (!Number.isInteger(userId) || (role !== 'user' && role !== 'admin')) throw new Error('Payload non valido');
-    return { userId, role };
+    const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] }) as jwt.JwtPayload;
+    return { userId: Number(decoded.sub), role: decoded.role as Role };
   }
 }
