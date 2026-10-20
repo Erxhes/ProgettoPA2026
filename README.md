@@ -412,7 +412,7 @@ Per fermare tutto: `docker compose down` (con `-v` cancella anche i dati del dat
 
 ![Risultati test](docs/test_suites.png)
 
-Ci sono 73 test Jest in 18 suite (`tests/`). I DAO e la transazione sono mock, quindi il database non serve; le rotte si provano sull'app Express con `supertest`, con JWT veri firmati con una chiave di prova. Le query SQL vere si provano con Postman sul database seminato.
+Ci sono 75 test Jest in 18 suite (`tests/`). I DAO e la transazione sono mock, quindi il database non serve; le rotte si provano sull'app Express con `supertest`, con JWT veri firmati con una chiave di prova. Le query SQL vere si provano con Postman sul database seminato.
 
 | Suite | Cosa verifica |
 |---|---|
