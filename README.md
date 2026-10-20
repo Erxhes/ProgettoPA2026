@@ -8,19 +8,18 @@ Progetto individuale per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNI
 2. [Stack](#stack)
 3. [Rotte](#rotte)
 4. [Progettazione](#progettazione)
-5. [Note](#note)
-6. [Errori](#errori)
-7. [Dati iniziali (seed)](#dati-iniziali-seed)
-8. [Avvio con docker-compose](#avvio-con-docker-compose)
-9. [Test](#test)
-10. [Test con Postman](#test-con-postman)
-11. [Struttura del repository](#struttura-del-repository)
+5. [Errori](#errori)
+6. [Dati iniziali (seed)](#dati-iniziali-seed)
+7. [Avvio con docker-compose](#avvio-con-docker-compose)
+8. [Test](#test)
+9. [Test con Postman](#test-con-postman)
+10. [Struttura del repository](#struttura-del-repository)
 
 ## Obiettivo
 
 Il progetto è un back-end REST per creare, eseguire e valutare modelli di ottimizzazione su grafo. Un modello è un grafo con dei pesi sugli archi, e il percorso di costo minimo si calcola con [`node-dijkstra`](https://www.npmjs.com/package/node-dijkstra).
 
-Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo peso per un arco (per esempio i minuti per percorrere un tratto di strada) e il proprietario del modello decide se accettarlo. Se la proposta è approvata, il peso viene aggiornato con una media esponenziale e nasce una nuova **versione dei pesi**.
+Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo peso per un arco (per esempio i minuti per percorrere un tratto di strada) e il proprietario del modello decide se accettarlo. Se la proposta è approvata il peso si aggiorna con una media esponenziale e nasce una nuova **versione dei pesi**.
 
 Cosa si può fare:
 
