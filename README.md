@@ -37,7 +37,7 @@ Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`
 
 | Componente | Scelta |
 |---|---|
-| Runtime e linguaggio | Node.js 24, TypeScript `strict`
+| Runtime e linguaggio | Node.js 24, TypeScript `strict` (senza `any`) |
 | Web framework | Express 5 |
 | ORM e database | Sequelize 6, PostgreSQL 16 (avviato da docker-compose) |
 | Grafo | `node-dijkstra` |
@@ -61,40 +61,26 @@ Tutte le rotte, tranne le tre pubbliche, richiedono l'header `Authorization: Bea
 | `POST /models/:id/execute` | utente | esegue il modello (`{ start, goal }`); stesso costo della creazione |
 | `POST /models/:id/simulate` | utente | simula la variazione del peso di un arco, senza costo |
 | `GET /models/:id/versions` | utente | versioni dei pesi; filtri `date`, `nodes`, `edges` |
-| `POST /models/:id/weight-requests` | utente | crea una richiesta di cambio peso (stato `pending`) |
-| `GET /weight-requests` | utente | stato delle richieste; filtri `modelId`, `date`, `status` (in AND) |
-| `PATCH /weight-requests/:id/approve` | utente, se proprietario del modello | approva la richiesta e crea la nuova versione |
-| `PATCH /weight-requests/:id/reject` | utente, se proprietario del modello | rifiuta la richiesta; body `{ reason }` obbligatorio |
+| `POST /models/:id/weight-requests` | utente | crea una richiesta di cambio peso (`pending`) |
+| `GET /weight-requests` | utente | stato delle richieste; filtri `modelId`, `date`, `status` |
+| `PATCH /weight-requests/:id/approve` | proprietario del modello | approva e crea la nuova versione |
+| `PATCH /weight-requests/:id/reject` | proprietario del modello | rifiuta, con `{ reason }` obbligatorio |
 
 ### Autenticazione
 
-Per usare le rotte protette serve un JWT. Si può ottenere in tre modi:
+Il JWT si ottiene con `POST /auth/register` o `POST /auth/login`, oppure con `npm run token` (vedi più sotto). Il login funziona anche a token finiti, ma le altre rotte rispondono 401.
 
-- registrandosi con `POST /auth/register` (email, username e password): l'utente nasce con ruolo `user` e 50 token, e la risposta contiene già il JWT;
-- accedendo con `POST /auth/login` (email e password), anche con i token finiti: il login funziona, ma le altre rotte rispondono 401;
-- generandolo fuori dal sistema, per esempio su jwt.io con algoritmo RS256 e la stessa chiave privata messa in `.env`, oppure con `npm run token`.
+Le password sono salvate cifrate (bcrypt) e non compaiono mai nelle risposte. L'admin non si può creare con la registrazione: esiste solo nel seed, e un body con il campo `role` viene rifiutato con 400.
 
-Le password si salvano cifrate (bcrypt) e non compaiono mai nelle risposte. L'admin non si può creare con la registrazione: esiste solo nel seed, e un corpo con il campo `role` viene rifiutato con 400.
-
-Il JWT contiene solo l'essenziale e dura 1 giorno:
+Il JWT contiene solo l'essenziale e dura 1 giorno: `sub` è l'id utente e `role` vale `user` o `admin`.
 
 ```json
 { "sub": "2", "role": "user" }
 ```
 
-`sub` è l'id dell'utente e `role` può essere `user` o `admin`. Esempio di risposta della registrazione:
-
-```json
-{
-  "user": { "id": 6, "email": "mario.rossi@example.com", "username": "mario", "role": "user", "tokens": 50 },
-  "token": "eyJhbGciOiJSUzI1NiIs..."
-}
-```
-
 ### Formato del grafo
 
-Il grafo segue l'interfaccia di `node-dijkstra`: un oggetto che ha per chiavi i nodi e per valori i vicini raggiungibili con il relativo peso.
-Il grafo è orientato. Ogni vicino deve comparire anche come chiave (eventualmente con `{}`), così il numero di nodi è univoco.
+Il grafo segue l'interfaccia di `node-dijkstra`: le chiavi sono i nodi e i valori sono i vicini con il peso. È orientato, e ogni vicino deve comparire anche come chiave (anche con `{}`), così il numero di nodi è chiaro.
 
 ```json
 {
@@ -108,13 +94,11 @@ Il grafo è orientato. Ogni vicino deve comparire anche come chiave (eventualmen
 }
 ```
 
-Ogni nodo deve avere almeno un arco, entrante o uscente: i nodi di una versione si ricavano dagli archi, quindi un nodo isolato andrebbe perso e viene rifiutato con 400.
-
-Vincoli: pesi numerici maggiori di 0 e minori di 1000000, al più 4 decimali; nessun arco da un nodo a se stesso; almeno un arco; al massimo 500 nodi e 5000 archi.
+Regole: pesi maggiori di 0 e minori di 1000000, al massimo 4 decimali; nessun arco da un nodo a se stesso; almeno un arco; ogni nodo deve avere almeno un arco (i nodi della versione si ricavano dagli archi, quindi un nodo isolato andrebbe perso).
 
 ### Esempi di risposta
 
-Esecuzione (`POST /models/1/execute`, body `{ "start": "Stazione", "goal": "Collemarino" }`):
+Esecuzione (`POST /models/1/execute` con `{ "start": "Stazione", "goal": "Collemarino" }`):
 
 ```json
 {
@@ -127,7 +111,7 @@ Esecuzione (`POST /models/1/execute`, body `{ "start": "Stazione", "goal": "Coll
 }
 ```
 
-`cost` è la somma dei pesi lungo il percorso ottimo, **non** i token addebitati (che sono in `tokensCharged`).
+`cost` è la somma dei pesi lungo il percorso, non i token addebitati (quelli sono in `tokensCharged`).
 
 Simulazione (`POST /models/1/simulate`):
 
@@ -139,14 +123,13 @@ Simulazione (`POST /models/1/simulate`):
 }
 ```
 
-La risposta contiene `results` (peso, percorso e costo per ognuno dei 21 passi), `best` (il risultato con il costo minore,
-con `weights`, cioè la configurazione completa dei pesi del grafo usata) e `executionTimeMs`.
+La risposta ha `results` (peso, percorso e costo per ognuno dei 21 passi), `best` (il risultato col costo minore, con `weights`, cioè tutti i pesi del grafo usati) e `executionTimeMs`.
 
 ### Filtri
 
-- `date` è un giorno nel formato `YYYY-MM-DD` (UTC): restituisce gli elementi creati in quel giorno. Date inesistenti (es. `2026-02-30`) danno 400.
-- `status` ∈ `pending | approved | rejected`; `modelId`, `nodes`, `edges` sono interi.
-- Tutti i filtri sono opzionali e combinati in AND; parametri sconosciuti o valori non validi danno 400.
+- `date` è un giorno `YYYY-MM-DD` (UTC): restituisce gli elementi creati in quel giorno. Una data che non esiste (per esempio `2026-02-30`) dà 400.
+- `status` vale `pending`, `approved` o `rejected`; `modelId`, `nodes` e `edges` sono interi.
+- I filtri sono opzionali e si combinano in AND.
 
 ## Progettazione
 
