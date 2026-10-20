@@ -202,9 +202,6 @@ Una **versione dei pesi** è una copia completa del grafo: ogni approvazione cre
 ![Verifica del servizio](docs/diagrammi/Verifica_del_servizio.png)
 
 ### Pattern usati e motivazioni
-
-La specifica non dice quali pattern usare, ma chiede di documentarli e motivarli.
-
 #### MVC con Service Layer
 
 Le rotte (`src/routes/`) passano la richiesta al controller (`src/controllers/`), che legge i dati già validati, chiama un servizio (`src/services/`) e scrive la risposta JSON, che fa da "view". Costi, media esponenziale, versioni e simulazione stanno nei servizi. I controller restano corti e le regole si provano senza HTTP: `tests/alphaAndBlend.test.ts` lo fa con `blendWeight`.
