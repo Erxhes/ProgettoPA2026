@@ -1,6 +1,6 @@
 # Backend per modelli di ottimizzazione su grafo
 
-Progetto individuale per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNIVPM).
+Progetto per l'esame di Programmazione Avanzata (A.A. 2025/2026, UNIVPM).
 
 ## Indice
 
@@ -23,12 +23,12 @@ Simula il *crowd-sourcing*: ogni utente autenticato può proporre un nuovo peso 
 
 Cosa si può fare:
 
-- creare un modello da un grafo nel formato di `node-dijkstra`, pagando dei token;
+- creare un modello da un grafo, pagando dei token;
 - eseguire un modello e ottenere percorso, costo del percorso e tempo di esecuzione, pagando dei token;
-- chiedere il cambio di peso di un arco: la richiesta parte in stato *pending* e poi diventa *approved* o *rejected* (con motivazione);
+- chiedere il cambio di peso di un arco: la richiesta parte *pending* e poi diventa *approved* o *rejected* (con motivazione);
 - consultare lo stato delle richieste e le versioni dei pesi, con dei filtri;
-- simulare la variazione del peso di un arco e vedere il risultato migliore con la sua configurazione dei pesi;
-- gestire i token di ogni utente, con una rotta riservata all'admin per la ricarica;
+- simulare la variazione del peso di un arco e vedere il risultato migliore;
+- ricaricare i token di un utente (solo admin);
 - registrarsi e accedere con email e password per ottenere il JWT.
 
 Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`, sono protette da JWT RS256.
@@ -37,11 +37,11 @@ Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`
 
 | Componente | Scelta |
 |---|---|
-| Runtime e linguaggio | Node.js 24, TypeScript in modalità `strict` (senza `any`) |
+| Runtime e linguaggio | Node.js 24, TypeScript `strict`
 | Web framework | Express 5 |
-| ORM e database | Sequelize 6, PostgreSQL 16 (processo separato, avviato da docker-compose) |
+| ORM e database | Sequelize 6, PostgreSQL 16 (avviato da docker-compose) |
 | Grafo | `node-dijkstra` |
-| Autenticazione | JWT con algoritmo RS256 (`jsonwebtoken`); password cifrate con `bcryptjs`; la chiave privata è in `.env` |
+| Autenticazione | JWT RS256 (`jsonwebtoken`), password cifrate con `bcryptjs`, chiave privata in `.env` |
 | Validazione | `zod` |
 | Test | Jest, ts-jest, supertest |
 | Contenitori | Docker e docker-compose |
@@ -49,18 +49,17 @@ Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`
 
 ## Rotte
 
-Tutte le rotte, tranne `GET /health`, `POST /auth/register` e `POST /auth/login`, richiedono l'header `Authorization: Bearer <JWT>` e passano dal controllo dei token residui:
-se l'utente ha finito i token ogni richiesta restituisce **401**.
+Tutte le rotte, tranne le tre pubbliche, richiedono l'header `Authorization: Bearer <JWT>`. Se l'utente ha finito i token ogni richiesta restituisce **401**.
 
 | Metodo e percorso | Chi può chiamarla | Descrizione |
 |---|---|---|
 | `GET /health` | pubblica | verifica che il servizio sia attivo |
-| `POST /auth/register` | pubblica | registra un utente: body `{ email, username, password }`; ruolo `user` e 50 token iniziali; risponde con i dati dell'utente e un JWT |
-| `POST /auth/login` | pubblica | accesso: body `{ email, password }`; risponde con i dati dell'utente e un JWT |
-| `POST /admin/recharge` | admin | ricarica un utente: body `{ email, credit }`, il credito si somma al saldo |
-| `POST /models` | utente | crea un modello: body `{ name, graph }`; costo 0.20 per nodo + 0.01 per arco |
-| `POST /models/:id/execute` | utente | esegue il modello: body `{ start, goal }`; stesso costo della creazione |
-| `POST /models/:id/simulate` | utente | simula la variazione del peso di un arco (nessun costo in token) |
+| `POST /auth/register` | pubblica | registra un utente (`{ email, username, password }`), con ruolo `user` e 50 token; risponde con l'utente e il JWT |
+| `POST /auth/login` | pubblica | accesso (`{ email, password }`); risponde con l'utente e il JWT |
+| `POST /admin/recharge` | admin | ricarica un utente (`{ email, credit }`), il credito si somma al saldo |
+| `POST /models` | utente | crea un modello (`{ name, graph }`); costo 0.20 per nodo + 0.01 per arco |
+| `POST /models/:id/execute` | utente | esegue il modello (`{ start, goal }`); stesso costo della creazione |
+| `POST /models/:id/simulate` | utente | simula la variazione del peso di un arco, senza costo |
 | `GET /models/:id/versions` | utente | versioni dei pesi; filtri `date`, `nodes`, `edges` |
 | `POST /models/:id/weight-requests` | utente | crea una richiesta di cambio peso (stato `pending`) |
 | `GET /weight-requests` | utente | stato delle richieste; filtri `modelId`, `date`, `status` (in AND) |
