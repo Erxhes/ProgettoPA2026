@@ -4,7 +4,7 @@ import { ModelDao } from '../src/dao/ModelDao';
 import { UserDao } from '../src/dao/UserDao';
 import { Edge, GraphModel, ModelVersion, User } from '../src/models';
 import { JwtService } from '../src/services/JwtService';
-import { SimulationService, weightSteps } from '../src/services/SimulationService';
+import { ModelService, weightSteps } from '../src/services/ModelService';
 import { simulationSchema } from '../src/validators/simulationSchemas';
 
 jest.mock('../src/dao/UserDao');
@@ -61,7 +61,7 @@ describe('simulationSchema', () => {
   });
 });
 
-describe('SimulationService.simulate', () => {
+describe('ModelService.simulate', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     models.findById.mockResolvedValue({ id: 1 } as GraphModel);
@@ -69,7 +69,7 @@ describe('SimulationService.simulate', () => {
   });
 
   it('il percorso cambia oltre la soglia e il best è il costo minore', async () => {
-    const res = await SimulationService.simulate(1, valid);
+    const res = await ModelService.simulate(1, valid);
     expect(res.count).toBe(6);
     expect(res.results.map((r) => r.cost)).toEqual([2, 3, 4, 5, 5, 5]);
     expect(res.results[0].path).toEqual(['A', 'B', 'D']);
@@ -79,7 +79,7 @@ describe('SimulationService.simulate', () => {
 
   it('a parità di costo vince il peso più piccolo', async () => {
     // Da 4 a 6 il costo è sempre 5 (si passa da C): best = peso 4.
-    const res = await SimulationService.simulate(1, { ...valid, initialWeight: 4, finalWeight: 6 });
+    const res = await ModelService.simulate(1, { ...valid, initialWeight: 4, finalWeight: 6 });
     expect(res.results.map((r) => r.cost)).toEqual([5, 5, 5]);
     expect(res.best?.weight).toBe(4);
   });

@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { ModelService } from '../services/ModelService';
-import { SimulationService } from '../services/SimulationService';
-import { VersionService } from '../services/VersionService';
 import { SimulationInput } from '../validators/simulationSchemas';
 import { VersionsQuery } from '../validators/querySchemas';
 import { GraphInput } from '../validators/modelSchemas';
@@ -22,13 +20,13 @@ export async function execute(req: Request, res: Response): Promise<void> {
 
 /** Simula la variazione del peso di un arco */
 export async function simulate(req: Request, res: Response): Promise<void> {
-  res.status(200).json(await SimulationService.simulate(Number(req.params.id), req.body as SimulationInput));
+  res.status(200).json(await ModelService.simulate(Number(req.params.id), req.body as SimulationInput));
 }
 
 /** Elenca le versioni dei pesi del modello */
 export async function versions(req: Request, res: Response): Promise<void> {
   const modelId = Number(req.params.id);
-  const list = await VersionService.list(modelId, res.locals.query as VersionsQuery);
+  const list = await ModelService.listVersions(modelId, res.locals.query as VersionsQuery);
   res.status(200).json({ modelId, count: list.length, versions: list });
 }
 
