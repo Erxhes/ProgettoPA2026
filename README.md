@@ -484,21 +484,21 @@ Se avevi già avviato una versione precedente del progetto, usa `docker compose 
 
 ![Risultati test](docs/test_suites.png)
 
-Sono presenti **74 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
+Sono presenti **73 test Jest** in 18 suite (`tests/`). Jest sostituisce i DAO e la transazione con mock, quindi i test non richiedono il database; le rotte si provano sull'app Express con `supertest` (JWT reali firmati con una chiave di test). Le query SQL reali si verificano con Postman sul database seminato (sezione "Test con Postman").
 
 | Suite | Cosa verifica |
 |---|---|
 | `setup` | `GET /health` e Singleton del database |
-| `authenticate`, `roleAndTokens`, `tokenCharge` | JWT valido, mancante, firmato con un'altra chiave, scaduto, HS256, schema non Bearer; ruoli; token finiti e utente inesistente: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
+| `authenticate`, `roleAndTokens`, `tokenService` | JWT valido, mancante, firmato con un'altra chiave, scaduto, HS256, schema non Bearer; ruoli; token finiti e utente inesistente: 401; addebito dei token, con la lettura del saldo nella stessa transazione |
 | `adminRoutes` | ricarica: 401, 403, 400, 404, 200 |
 | `modelValidation` | calcolo del costo, validazione del grafo e del nome |
-| `modelRoutes`, `executeRollback` | creazione con e senza credito, esecuzione, nodo sconosciuto, id non numerico, modello inesistente, logica del rollback dell'addebito |
+| `modelRoutes`, `modelExecute` | creazione con e senza credito, esecuzione, nodo sconosciuto, id non numerico, modello inesistente, logica del rollback dell'addebito |
 | `alphaAndBlend`, `alphaEnv` | alpha valido o errato, media esponenziale, alpha letto dall'ambiente all'avvio |
-| `weightRequestRoutes`, `weightRequestAtomicity` | creazione, validazione del peso, approvazione, rifiuto, 403 e 409, approvazione doppia, logica del rollback |
-| `queryRoutes`, `queryFilters` | filtri delle richieste in AND, data non valida, visibilità delle richieste, elenco delle versioni |
+| `weightRequestRoutes`, `weightRequestApprove` | creazione, validazione del peso, approvazione, rifiuto, 403 e 409, approvazione doppia, logica del rollback |
+| `queryRoutes`, `weightRequestSearch` | filtri delle richieste in AND, data non valida, visibilità delle richieste, elenco delle versioni |
 | `simulation` | passi da 1 a 2 con passo 0.05, validazione dei range, best result e parità di costo, nessun addebito di token |
 | `errorHandler` | traduzione degli errori in risposte HTTP, errori inattesi senza dettagli |
-| `authRoutes` | registrazione (201 con 50 token, 409 se email o username sono già usati o se il duplicato lo scopre il database, 400 con il ruolo nel corpo) e login (200 anche a 0 token, 401 con lo stesso messaggio per password sbagliata ed email sconosciuta) |
+| `authRoutes` | registrazione (201 con 50 token, 409 se email o username sono già usati, 400 con il ruolo nel corpo) e login (200 anche a 0 token, 401 con lo stesso messaggio per password sbagliata ed email sconosciuta) |
 | `seed` | il seed gira in un'unica transazione e, con la transazione simulata, annulla tutto se un inserimento fallisce |
 
 ```bash

@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import { UniqueConstraintError } from 'sequelize';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { UserDao } from '../src/dao/UserDao';
@@ -55,13 +54,6 @@ describe('POST /auth/register', () => {
     dao.findByUsername.mockResolvedValue(utente('10.00'));
     await request(app).post('/auth/register').send(nuovo).expect(409);
     expect(dao.create).not.toHaveBeenCalled();
-  });
-
-  it('409 se il duplicato lo scopre il database (due registrazioni uguali insieme)', async () => {
-    dao.findByEmail.mockResolvedValue(null);
-    dao.findByUsername.mockResolvedValue(null);
-    dao.create.mockRejectedValue(new UniqueConstraintError({}));
-    await request(app).post('/auth/register').send(nuovo).expect(409);
   });
 
   it('400 se il corpo contiene il ruolo: non ci si può registrare come admin', async () => {

@@ -6,43 +6,27 @@ import { AuthService } from '../services/AuthService';
 /** Arco dei grafi iniziali: [da, a, peso]. */
 type EdgeDef = [string, string, number];
 
-/** Luoghi della rete stradale di Ancona (le sigle servono solo a scrivere gli archi in modo compatto). */
-const ANCONA_NODI: Record<string, string> = {
-  A: 'Stazione', B: 'Porto', C: 'Piazza Cavour', D: 'Piazza Roma', E: 'Archi', F: 'Duomo',
-  G: 'Posatora', H: 'Passetto', I: 'Torrette', J: 'Montedago', K: 'Tavernelle', L: 'Collemarino',
-};
+/** Rete stradale di Ancona (minuti di percorrenza): 12 nodi, 18 archi. */
+const ANCONA: EdgeDef[] = [
+  ['Stazione', 'Porto', 4], ['Stazione', 'Piazza Cavour', 2], ['Porto', 'Piazza Cavour', 1],
+  ['Porto', 'Piazza Roma', 5], ['Piazza Cavour', 'Piazza Roma', 8], ['Piazza Cavour', 'Archi', 10],
+  ['Piazza Roma', 'Archi', 4], ['Piazza Roma', 'Duomo', 2], ['Archi', 'Duomo', 3],
+  ['Archi', 'Posatora', 7], ['Duomo', 'Passetto', 6], ['Posatora', 'Passetto', 1],
+  ['Posatora', 'Torrette', 9], ['Passetto', 'Montedago', 4], ['Torrette', 'Montedago', 2],
+  ['Torrette', 'Tavernelle', 6], ['Montedago', 'Collemarino', 3], ['Tavernelle', 'Collemarino', 5],
+];
 
-/** Luoghi della rete ciclabile di Jesi. */
-const JESI_NODI: Record<string, string> = {
-  N1: 'Stazione', N2: 'Porta Valle', N3: 'Viale Don Minzoni', N4: 'Piazza della Repubblica',
-  N5: 'Teatro Pergolesi', N6: 'Ospedale', N7: 'Palazzo della Signoria', N8: 'Campo Sportivo',
-  N9: 'Cimitero', N10: 'Zona Industriale',
-};
-
-/** Sostituisce le sigle degli archi con i nomi dei luoghi. */
-function conNomi(edges: EdgeDef[], nodi: Record<string, string>): EdgeDef[] {
-  return edges.map(([da, a, peso]): EdgeDef => [nodi[da], nodi[a], peso]);
-}
-
-/** Rete stradale (minuti di percorrenza): 12 nodi, 18 archi. */
-const ANCONA: EdgeDef[] = conNomi(
-  [
-    ['A', 'B', 4], ['A', 'C', 2], ['B', 'C', 1], ['B', 'D', 5], ['C', 'D', 8], ['C', 'E', 10],
-    ['D', 'E', 4], ['D', 'F', 2], ['E', 'F', 3], ['E', 'G', 7], ['F', 'H', 6], ['G', 'H', 1],
-    ['G', 'I', 9], ['H', 'J', 4], ['I', 'J', 2], ['I', 'K', 6], ['J', 'L', 3], ['K', 'L', 5],
-  ],
-  ANCONA_NODI,
-);
-
-/** Rete ciclabile (minuti di percorrenza): 10 nodi, 16 archi. */
-const JESI: EdgeDef[] = conNomi(
-  [
-    ['N1', 'N2', 3], ['N1', 'N3', 5], ['N2', 'N4', 2], ['N2', 'N5', 6], ['N3', 'N5', 4], ['N3', 'N6', 7],
-    ['N4', 'N5', 1], ['N4', 'N7', 3], ['N5', 'N7', 1], ['N5', 'N8', 5], ['N6', 'N7', 3], ['N6', 'N8', 2],
-    ['N7', 'N9', 4], ['N8', 'N9', 3], ['N8', 'N10', 6], ['N9', 'N10', 2],
-  ],
-  JESI_NODI,
-);
+/** Rete ciclabile di Jesi (minuti di percorrenza): 10 nodi, 16 archi. */
+const JESI: EdgeDef[] = [
+  ['Stazione', 'Porta Valle', 3], ['Stazione', 'Viale Don Minzoni', 5],
+  ['Porta Valle', 'Piazza della Repubblica', 2], ['Porta Valle', 'Teatro Pergolesi', 6],
+  ['Viale Don Minzoni', 'Teatro Pergolesi', 4], ['Viale Don Minzoni', 'Ospedale', 7],
+  ['Piazza della Repubblica', 'Teatro Pergolesi', 1], ['Piazza della Repubblica', 'Palazzo della Signoria', 3],
+  ['Teatro Pergolesi', 'Palazzo della Signoria', 1], ['Teatro Pergolesi', 'Campo Sportivo', 5],
+  ['Ospedale', 'Palazzo della Signoria', 3], ['Ospedale', 'Campo Sportivo', 2],
+  ['Palazzo della Signoria', 'Cimitero', 4], ['Campo Sportivo', 'Cimitero', 3],
+  ['Campo Sportivo', 'Zona Industriale', 6], ['Cimitero', 'Zona Industriale', 2],
+];
 
 /** Numero di nodi distinti toccati dagli archi. */
 function countNodes(edges: EdgeDef[]): number {
@@ -80,48 +64,38 @@ export async function runSeed(force: boolean): Promise<void> {
   }
 
   // Password di prova degli utenti (scritte anche nel README), cifrate prima di aprire la transazione
-  const [hashChiara, hashLuca, hashSofia, hashAndrea, hashElena] = await Promise.all(
-    ['Chiara2026!', 'Luca2026!', 'Sofia2026!', 'Andrea2026!', 'Elena2026!'].map((p) => AuthService.hashPassword(p)),
-  );
+  const datiUtenti = [
+    { email: 'chiara.ferri@example.com', username: 'chiara', password: 'Chiara2026!', role: 'admin', tokens: 1000 },
+    { email: 'luca.bianchi@example.com', username: 'luca', password: 'Luca2026!', role: 'user', tokens: 100 },
+    { email: 'sofia.romano@example.com', username: 'sofia', password: 'Sofia2026!', role: 'user', tokens: 100 },
+    { email: 'andrea.conti@example.com', username: 'andrea', password: 'Andrea2026!', role: 'user', tokens: 50 },
+    { email: 'elena.greco@example.com', username: 'elena', password: 'Elena2026!', role: 'user', tokens: 0 },
+  ] as const;
+  const hashes = await Promise.all(datiUtenti.map((u) => AuthService.hashPassword(u.password)));
 
-  // Un'unica transazione: se un inserimento fallisce non resta un seed a metà (che il controllo
-  // sugli utenti considererebbe già eseguito).
+  // Un'unica transazione: se un inserimento fallisce non resta un seed a metà
   const adminId = await sequelize.transaction(async (tx) => {
-    const admin = await User.create(
-      { email: 'chiara.ferri@example.com', username: 'chiara', passwordHash: hashChiara, role: 'admin', tokens: 1000 },
-      { transaction: tx },
-    );
-    const luca = await User.create(
-      { email: 'luca.bianchi@example.com', username: 'luca', passwordHash: hashLuca, role: 'user', tokens: 100 },
-      { transaction: tx },
-    );
-    const sofia = await User.create(
-      { email: 'sofia.romano@example.com', username: 'sofia', passwordHash: hashSofia, role: 'user', tokens: 100 },
-      { transaction: tx },
-    );
-    const andrea = await User.create(
-      { email: 'andrea.conti@example.com', username: 'andrea', passwordHash: hashAndrea, role: 'user', tokens: 50 },
-      { transaction: tx },
-    );
-    await User.create(
-      { email: 'elena.greco@example.com', username: 'elena', passwordHash: hashElena, role: 'user', tokens: 0 },
-      { transaction: tx },
-    );
+    const utenti: User[] = [];
+    for (const [i, u] of datiUtenti.entries()) {
+      const { password: _password, ...campi } = u;
+      utenti.push(await User.create({ ...campi, passwordHash: hashes[i] }, { transaction: tx }));
+    }
+    const [admin, luca, sofia, andrea] = utenti;
 
     const ancona = await GraphModel.create({ name: 'Rete stradale Ancona', ownerId: luca.id }, { transaction: tx });
     await createVersion(ancona.id, 1, ANCONA, tx);
-    const anconaV2 = await createVersion(ancona.id, 2, withUpdatedWeight(ANCONA, ANCONA_NODI.D, ANCONA_NODI.F, 3), tx);
+    const anconaV2 = await createVersion(ancona.id, 2, withUpdatedWeight(ANCONA, 'Piazza Roma', 'Duomo', 3), tx);
 
     const jesi = await GraphModel.create({ name: 'Rete ciclabile Jesi', ownerId: sofia.id }, { transaction: tx });
     await createVersion(jesi.id, 1, JESI, tx);
-    const jesiV2 = await createVersion(jesi.id, 2, withUpdatedWeight(JESI, JESI_NODI.N5, JESI_NODI.N7, 3), tx);
+    const jesiV2 = await createVersion(jesi.id, 2, withUpdatedWeight(JESI, 'Teatro Pergolesi', 'Palazzo della Signoria', 3), tx);
 
     const now = new Date();
     await WeightChangeRequest.bulkCreate([
-      { modelId: ancona.id, requesterId: andrea.id, fromNode: ANCONA_NODI.D, toNode: ANCONA_NODI.F, newWeight: 3, status: 'approved', resultingVersionId: anconaV2.id, decidedAt: now },
-      { modelId: jesi.id, requesterId: luca.id, fromNode: JESI_NODI.N5, toNode: JESI_NODI.N7, newWeight: 3, status: 'approved', resultingVersionId: jesiV2.id, decidedAt: now },
-      { modelId: ancona.id, requesterId: andrea.id, fromNode: ANCONA_NODI.C, toNode: ANCONA_NODI.D, newWeight: 5, status: 'pending' },
-      { modelId: jesi.id, requesterId: andrea.id, fromNode: JESI_NODI.N2, toNode: JESI_NODI.N5, newWeight: 1, status: 'rejected', rejectionReason: 'Il tratto è in salita: un minuto non è realistico, nemmeno in bicicletta', decidedAt: now },
+      { modelId: ancona.id, requesterId: andrea.id, fromNode: 'Piazza Roma', toNode: 'Duomo', newWeight: 3, status: 'approved', resultingVersionId: anconaV2.id, decidedAt: now },
+      { modelId: jesi.id, requesterId: luca.id, fromNode: 'Teatro Pergolesi', toNode: 'Palazzo della Signoria', newWeight: 3, status: 'approved', resultingVersionId: jesiV2.id, decidedAt: now },
+      { modelId: ancona.id, requesterId: andrea.id, fromNode: 'Piazza Cavour', toNode: 'Piazza Roma', newWeight: 5, status: 'pending' },
+      { modelId: jesi.id, requesterId: andrea.id, fromNode: 'Porta Valle', toNode: 'Teatro Pergolesi', newWeight: 1, status: 'rejected', rejectionReason: 'Il tratto è in salita: un minuto non è realistico, nemmeno in bicicletta', decidedAt: now },
     ], { transaction: tx });
 
     return admin.id;

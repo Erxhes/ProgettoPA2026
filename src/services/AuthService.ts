@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import { UniqueConstraintError } from 'sequelize';
 import { UserDao } from '../dao/UserDao';
 import { ErrorFactory } from '../errors/ErrorFactory';
 import { User } from '../models';
@@ -40,13 +39,7 @@ export class AuthService {
     if (await UserDao.findByEmail(email)) throw ErrorFactory.conflict('Email già registrata');
     if (await UserDao.findByUsername(username)) throw ErrorFactory.conflict('Username già in uso');
     const passwordHash = await AuthService.hashPassword(password);
-    try {
-      return toResult(await UserDao.create({ email, username, passwordHash, tokens: INITIAL_TOKENS }));
-    } catch (err) {
-      // Due registrazioni uguali arrivate insieme: la seconda viola il vincolo di unicità del database
-      if (err instanceof UniqueConstraintError) throw ErrorFactory.conflict('Email o username già in uso');
-      throw err;
-    }
+    return toResult(await UserDao.create({ email, username, passwordHash, tokens: INITIAL_TOKENS }));
   }
 
   /**
