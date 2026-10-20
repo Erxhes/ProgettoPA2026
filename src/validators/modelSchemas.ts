@@ -49,6 +49,6 @@ export const executeModelSchema = z.object({
   goal: z.string().min(1).max(50),
 });
 
-/** Parametro :id (intero positivo) */
+
 /** Controlla che :id sia un numero intero */
 export const idParamSchema = z.object({ id: z.string().regex(/^\d+$/, 'id non valido') });
