@@ -22,6 +22,8 @@ describe('querySchemas', () => {
   it.each([
     ['status fuori enum', { status: 'boh' }],
     ['data inesistente', { date: '2026-02-30' }],
+    ['mese inesistente', { date: '2026-13-01' }],
+    ['anno zero', { date: '0000-01-01' }],
   ])('rifiuta richieste: %s', (_label, query) => {
     expect(requestsQuerySchema.safeParse(query).success).toBe(false);
   });

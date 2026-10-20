@@ -13,7 +13,12 @@ const positiveInt = nonNegativeInt.refine((n) => n > 0, 'deve essere maggiore di
 const dayString = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'formato richiesto YYYY-MM-DD')
-  .refine((d) => new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d, 'data non valida');
+  .refine((d) => {
+    // con un mese come 13 la data non è valida e toISOString lancerebbe un'eccezione (500): prima controllo.
+    // L'anno 0000 non esiste in Postgres e darebbe errore sulla query, quindi si parte dall'anno 1
+    const parsed = new Date(`${d}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.getUTCFullYear() >= 1 && parsed.toISOString().slice(0, 10) === d;
+  }, 'data non valida');
 
 /** Filtri di GET /weight-requests (tutti opzionali, combinati in AND) */
 export const requestsQuerySchema = z.object({
