@@ -7,21 +7,25 @@ import { SimulationInput } from '../validators/simulationSchemas';
 import { VersionsQuery } from '../validators/querySchemas';
 import { GraphInput } from '../validators/modelSchemas';
 
+/** Crea un modello con il grafo ricevuto */
 export async function create(req: Request, res: Response): Promise<void> {
   const { name, graph } = req.body as { name: string; graph: GraphInput };
   res.status(201).json(await ModelService.create(userId(req), name, graph));
 }
 
+/** Esegue il modello tra start e goal */
 export async function execute(req: Request, res: Response): Promise<void> {
   const { start, goal } = req.body as { start: string; goal: string };
   const result = await ModelService.execute(userId(req), Number(req.params.id), start, goal);
   res.status(200).json(result);
 }
 
+/** Simula la variazione del peso di un arco */
 export async function simulate(req: Request, res: Response): Promise<void> {
   res.status(200).json(await SimulationService.simulate(Number(req.params.id), req.body as SimulationInput));
 }
 
+/** Elenca le versioni dei pesi del modello */
 export async function versions(req: Request, res: Response): Promise<void> {
   const modelId = Number(req.params.id);
   const list = await VersionService.list(modelId, res.locals.query as VersionsQuery);

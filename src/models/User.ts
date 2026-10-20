@@ -13,6 +13,7 @@ export class User extends Model {
   /** DECIMAL: Sequelize/pg lo restituisce come stringa, convertire con Number() */
   declare tokens: string;
 
+  /** Definisce la tabella delle utenti */
   static initModel(sequelize: Sequelize): void {
     User.init(
       {

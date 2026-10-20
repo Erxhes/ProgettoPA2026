@@ -2,15 +2,19 @@ import { Transaction } from 'sequelize';
 import { Database } from '../config/database';
 import { User } from '../models';
 
+/** Query sugli utenti */
 export class UserDao {
+  /** Cerca un utente per id */
   static findById(id: number, tx?: Transaction): Promise<User | null> {
     return User.findByPk(id, { transaction: tx });
   }
 
+  /** Cerca un utente per email */
   static findByEmail(email: string): Promise<User | null> {
     return User.findOne({ where: { email } });
   }
 
+  /** Cerca un utente per username */
   static findByUsername(username: string): Promise<User | null> {
     return User.findOne({ where: { username } });
   }

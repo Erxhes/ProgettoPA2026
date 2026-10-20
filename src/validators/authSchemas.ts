@@ -8,6 +8,7 @@ const password = z
   .min(8, 'la password deve avere almeno 8 caratteri')
   .refine((p) => Buffer.byteLength(p, 'utf8') <= 72, 'la password è troppo lunga: al massimo 72 byte');
 
+/** Controlla i dati di registrazione */
 export const registerSchema = z
   .object({
     email,
@@ -19,4 +20,5 @@ export const registerSchema = z
   })
   .strict();
 
+/** Controlla i dati di login */
 export const loginSchema = z.object({ email, password: z.string().min(1) }).strict();

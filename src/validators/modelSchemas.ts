@@ -36,15 +36,18 @@ const graphSchema = z
     }
   });
 
+/** Controlla nome e grafo di un nuovo modello */
 export const createModelSchema = z.object({
   name: z.string().trim().min(1).max(100),
   graph: graphSchema,
 });
 
+/** Controlla start e goal dell'esecuzione */
 export const executeModelSchema = z.object({
   start: z.string().min(1).max(50),
   goal: z.string().min(1).max(50),
 });
 
 /** Parametro :id (intero positivo) */
+/** Controlla che :id sia un numero intero */
 export const idParamSchema = z.object({ id: z.string().regex(/^\d+$/, 'id non valido') });

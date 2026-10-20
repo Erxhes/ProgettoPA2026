@@ -10,6 +10,7 @@ export class ModelVersion extends Model {
   /** Data di modifica della versione */
   declare createdAt: Date;
 
+  /** Definisce la tabella delle versioni dei modelli */
   static initModel(sequelize: Sequelize): void {
     ModelVersion.init(
       {

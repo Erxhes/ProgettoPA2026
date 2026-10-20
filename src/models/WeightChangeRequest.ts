@@ -17,6 +17,7 @@ export class WeightChangeRequest extends Model {
   declare createdAt: Date;
   declare decidedAt: Date | null;
 
+  /** Definisce la tabella delle richieste di cambio peso */
   static initModel(sequelize: Sequelize): void {
     WeightChangeRequest.init(
       {

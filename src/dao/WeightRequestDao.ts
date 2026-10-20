@@ -2,6 +2,7 @@ import { Op, Transaction, WhereOptions } from 'sequelize';
 import { WeightChangeRequest } from '../models';
 import { RequestStatus } from '../models/WeightChangeRequest';
 
+/** Query sulle richieste di cambio peso */
 export class WeightRequestDao {
   /** Crea una richiesta di cambio peso in stato "pending" */
   static create(data: {
@@ -42,6 +43,7 @@ export class WeightRequestDao {
     return WeightChangeRequest.findByPk(id, tx ? { transaction: tx, lock: tx.LOCK.UPDATE } : {});
   }
 
+  /** Salva le modifiche a una richiesta */
   static save(request: WeightChangeRequest, tx?: Transaction): Promise<WeightChangeRequest> {
     return request.save({ transaction: tx });
   }

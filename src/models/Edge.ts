@@ -9,6 +9,7 @@ export class Edge extends Model {
   /** DECIMAL: restituito come stringa, convertire con Number() */
   declare weight: string;
 
+  /** Definisce la tabella delle archi */
   static initModel(sequelize: Sequelize): void {
     Edge.init(
       {

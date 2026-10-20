@@ -7,6 +7,7 @@ export type EdgeInput = [string, string, number];
 /** Versione di un modello con i suoi archi */
 export type VersionWithEdges = ModelVersion & { edges: Edge[] };
 
+/** Query su modelli, versioni e archi */
 export class ModelDao {
   /** Crea il modello con la versione 1 e i suoi archi */
   static async createWithFirstVersion(
@@ -40,10 +41,12 @@ export class ModelDao {
     return version;
   }
 
+  /** Cerca un modello per id */
   static findById(id: number): Promise<GraphModel | null> {
     return GraphModel.findByPk(id);
   }
 
+  /** Id dei modelli di un proprietario */
   static async findIdsByOwner(ownerId: number): Promise<number[]> {
     const owned = await GraphModel.findAll({ where: { ownerId }, attributes: ['id'] });
     return owned.map((m) => m.id);

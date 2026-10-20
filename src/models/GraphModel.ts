@@ -6,6 +6,7 @@ export class GraphModel extends Model {
   declare name: string;
   declare ownerId: number;
 
+  /** Definisce la tabella delle modelli */
   static initModel(sequelize: Sequelize): void {
     GraphModel.init(
       {

@@ -15,6 +15,7 @@ export function stepCount(initial: number, final: number, step: number): number 
   return Math.floor((final - initial) / step + EPSILON) + 1;
 }
 
+/** Controlla arco, pesi e passo della simulazione */
 export const simulationSchema = z
   .object({
     start: z.string().min(1).max(50),
