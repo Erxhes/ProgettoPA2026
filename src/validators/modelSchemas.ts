@@ -23,7 +23,7 @@ const graphSchema = z
       ctx.addIssue({ code: 'custom', message: 'il grafo deve contenere almeno un nodo e un arco' });
     }
     // I nodi della versione si ricavano dagli archi: un nodo senza archi andrebbe perso
-    // controllo gli archi: niente cappi e ogni vicino deve essere un nodo del grafo
+
     const connected = new Set<string>();
     for (const [from, neighbors] of Object.entries(graph)) {
       for (const to of Object.keys(neighbors)) {
