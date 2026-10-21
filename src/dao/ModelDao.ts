@@ -22,7 +22,7 @@ export class ModelDao {
     return { model, version };
   }
 
-  /** Aggiunge una versione (fotografia del grafo) con i suoi archi */
+  /** Aggiunge una versione con i suoi archi */
   static async addVersion(
     modelId: number,
     versionNumber: number,
